@@ -186,7 +186,7 @@
                     class:active={enabled}
                     on:click={toggleEnabled}
                 >
-                    <Pulse />
+                    <Pulse width="1em" />
                 </button>
             </div>
             <div class="col-1">
@@ -195,7 +195,7 @@
                     on:click={playPause}
                     disabled={!enabled}
                 >
-                    {#if $playing}<MediaPause />{:else}<MediaPlay />{/if}
+                    {#if $playing}<MediaPause width="1em" />{:else}<MediaPlay width="1em" />{/if}
                 </button>
             </div>
             <div class="col-1">
@@ -204,7 +204,7 @@
                     on:click={previous}
                     disabled={!enabled}
                 >
-                    <MediaSkipBackward />
+                    <MediaSkipBackward width="1em" />
                 </button>
             </div>
             <div class="col-1">
@@ -213,7 +213,7 @@
                     on:click={next}
                     disabled={!enabled}
                 >
-                    <MediaSkipForward />
+                    <MediaSkipForward width="1em" />
                 </button>
             </div>
             <div class="col-1">
@@ -224,7 +224,7 @@
                     on:click={toggleFavourite}
                     disabled={!enabled}
                 >
-                    <Heart />
+                    <Heart width="1em" />
                 </button>
             </div>
             <div class="col-6">
