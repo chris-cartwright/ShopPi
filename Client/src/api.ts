@@ -13,7 +13,7 @@ function getApiKey() {
 
 function prefixServerUrl(path: string) {
     // TODO: Default URL should be in a config file.
-    let server = localStorage.getItem('server-url') || 'http://localhost:5292/api/';
+    let server = localStorage.getItem('server-url') || 'http://localhost:4000/api/';
     if (path.indexOf('/') === 0) {
         path = path.substring(1);
     }
