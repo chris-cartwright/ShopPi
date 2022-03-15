@@ -23,7 +23,6 @@
 
     let enabled = false;
     let authenticated = Spotify.isAuthenticated;
-    let token: string | null;
     let api: typeof ky | null = null;
     let state = writable<State>(State.Empty);
     let playing = derived(state, (s) => s.playing);
@@ -32,11 +31,19 @@
     let formattedDisabledCountdown: Readable<string> | null = null;
 
     (async function () {
-        token = await Spotify.getToken();
+        let token = await Spotify.getToken();
         api = ky.extend({
             prefixUrl: "https://api.spotify.com/v1/me",
             headers: {
                 Authorization: `Bearer ${token}`,
+            },
+            hooks: {
+                beforeRequest: [
+                    async (request) => {
+                        let token = await Spotify.getToken();
+                        request.headers.set("Authorization", `Bearer ${token}`);
+                    },
+                ],
             },
         });
     })();
@@ -195,7 +202,11 @@
                     on:click={playPause}
                     disabled={!enabled}
                 >
-                    {#if $playing}<MediaPause width="1em" />{:else}<MediaPlay width="1em" />{/if}
+                    {#if $playing}
+                        <MediaPause width="1em" />
+                    {:else}
+                        <MediaPlay width="1em" />
+                    {/if}
                 </button>
             </div>
             <div class="col-1">
@@ -238,7 +249,11 @@
             </div>
             <div class="col-1">
                 <div class="text-secondary">
-                    {#if enabled}{$formattedDisabledCountdown}{:else}N/A{/if}
+                    {#if enabled}
+                        {$formattedDisabledCountdown}
+                    {:else}
+                        N/A
+                    {/if}
                 </div>
             </div>
         </div>
