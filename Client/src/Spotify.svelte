@@ -24,6 +24,7 @@
     let enabled = false;
     let authenticated = Spotify.isAuthenticated;
     let api: typeof ky | null = null;
+    let token: string;
     let state = writable<State>(State.Empty);
     let playing = derived(state, (s) => s.playing);
     let statusTimer: NodeJS.Timer | null = null;
@@ -31,21 +32,18 @@
     let formattedDisabledCountdown: Readable<string> | null = null;
 
     (async function () {
-        let token = await Spotify.getToken();
+        token = await Spotify.getToken();
         api = ky.extend({
             prefixUrl: "https://api.spotify.com/v1/me",
             headers: {
                 Authorization: `Bearer ${token}`,
             },
-            hooks: {
-                beforeRequest: [
-                    async (request) => {
-                        let token = await Spotify.getToken();
-                        request.headers.set("Authorization", `Bearer ${token}`);
-                    },
-                ],
-            },
         });
+
+        // Keep the token refreshed while active.
+        setInterval(async () => {
+            token = await Spotify.getToken();
+        }, 60_000);
     })();
 
     function startStatusLoop() {
