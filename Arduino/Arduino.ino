@@ -35,6 +35,12 @@ void setup() {
   Wire.begin();
   rtc.begin();
   clock.begin();
+
+  pinMode(pin_data, OUTPUT);
+  pinMode(pin_clock, OUTPUT);
+  pinMode(pin_latch, OUTPUT);
+  pinMode(pin_button_brightness, OUTPUT);
+  analogWrite(pin_button_brightness, 0);
 }
 
 void loop() {
@@ -55,13 +61,13 @@ void handleCommand() {
     Serial.readBytes(buffer, 6);
 
     DateTime newTime = DateTime(
-      buffer[0] + 2000,
-      buffer[1],
-      buffer[2],
-      buffer[3],
-      buffer[4],
-      buffer[5]
-    );
+                         buffer[0] + 2000,
+                         buffer[1],
+                         buffer[2],
+                         buffer[3],
+                         buffer[4],
+                         buffer[5]
+                       );
     rtc.adjust(newTime);
 
     sendTime();
@@ -100,6 +106,37 @@ void handleCommand() {
     Serial.flush();
     ledOff();
   }
+  else if (cmd == cmd_cycle_outputs) {
+    outputsOff();
+
+    Serial.print("OUTPUT: ");
+    for (int i = 0; i < 8; i++) {
+      Serial.print(i, DEC);
+      Serial.print(" ");
+      digitalWrite(pin_latch, LOW);
+      shiftOut(pin_data, pin_clock, MSBFIRST, 1 << i);
+      digitalWrite(pin_latch, HIGH);
+      delay(3000);
+    }
+
+    Serial.println("off.");
+    outputsOff();
+
+    Serial.print("BIGHTNESS: ");
+    digitalWrite(pin_latch, LOW);
+    shiftOut(pin_data, pin_clock, MSBFIRST, 0xFF);
+    digitalWrite(pin_latch, HIGH);
+
+    for (int i = 0; i <= 255; i += 25) {
+      Serial.print(i, DEC);
+      Serial.print(" ");
+      analogWrite(pin_button_brightness, i);
+      delay(3000);
+    }
+
+    Serial.println("off.");
+    outputsOff();
+  }
   else {
     Serial.println("ERROR: Unknown command");
   }
@@ -126,4 +163,10 @@ void ledOff() {
   analogWrite(pin_led_red, 255);
   analogWrite(pin_led_green, 255);
   analogWrite(pin_led_blue, 255);
+}
+
+void outputsOff() {
+  digitalWrite(pin_latch, LOW);
+  shiftOut(pin_data, pin_clock, MSBFIRST, 0);
+  digitalWrite(pin_latch, HIGH);
 }

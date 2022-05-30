@@ -7,7 +7,8 @@ public enum Commands : byte
 {
     Now = 1,
     SetDatetime,
-    CycleLed
+    CycleLed,
+    CycleOutputs
 }
 
 public record CommandInfo(
@@ -123,6 +124,7 @@ public class Program : IDisposable
 
     [Command(Commands.Now)]
     [Command(Commands.CycleLed)]
+    [Command(Commands.CycleOutputs)]
     private void GenericCommand(Commands command)
     {
         _port.Write(new byte[] { (byte)command }, 0, 1);
