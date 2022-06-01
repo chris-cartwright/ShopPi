@@ -8,7 +8,8 @@ public enum Commands : byte
     Now = 1,
     SetDatetime,
     CycleLed,
-    CycleOutputs
+    CycleOutputs,
+    TestInputs
 }
 
 public record CommandInfo(
@@ -128,6 +129,16 @@ public class Program : IDisposable
     private void GenericCommand(Commands command)
     {
         _port.Write(new byte[] { (byte)command }, 0, 1);
+    }
+
+
+    [Command(Commands.TestInputs)]
+    private void TestInputs(Commands command)
+    {
+        Console.Write("Press enter to exit.");
+        _port.Write(new byte[] { (byte)Commands.TestInputs }, 0, 1);
+        Console.ReadLine();
+        _port.Write(new byte[] { 0xFF }, 0, 1);
     }
 
     [Command(Commands.SetDatetime)]
