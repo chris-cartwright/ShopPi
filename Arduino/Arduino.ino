@@ -13,6 +13,7 @@ const byte cmd_test_inputs = 0x05;
 const byte cmd_read_light_sensor = 0x06;
 const byte cmd_verbose_enable = 0x07;
 const byte cmd_verbose_disable = 0x08;
+const byte cmd_boot_rpi = 0x09;
 
 /* Pins */
 const byte pin_light_sensor = A0;
@@ -53,6 +54,11 @@ void setup() {
   pinMode(pin_clock, OUTPUT);
   pinMode(pin_latch, OUTPUT);
   pinMode(pin_button_brightness, OUTPUT);
+
+  // RPi is booted on the falling edge of this pin.
+  // Set the pullup resistor before enabling output.
+  pinMode(pin_wake_rpi, INPUT_PULLUP);
+  pinMode(pin_wake_rpi, OUTPUT);
 
   // Set brightness before initializing LEDs.
   readAmbient();
@@ -216,8 +222,13 @@ void handleCommand() {
     verbose = false;
     Serial.println("Verbose disabled.");
   }
+  else if(cmd == cmd_boot_rpi) {
+    boot_rpi();
+    Serial.println("Boot triggered.");
+  }
   else {
-    Serial.println("ERROR: Unknown command");
+    Serial.print("ERROR: Unknown command ");
+    Serial.println(cmd, HEX);
   }
 }
 
@@ -285,4 +296,14 @@ void ledOff() {
   analogWrite(pin_led_red, 255);
   analogWrite(pin_led_green, 255);
   analogWrite(pin_led_blue, 255);
+}
+
+void boot_rpi() {
+  if(verbose) {
+    Serial.println("Booting RPi.");
+  }
+  
+  digitalWrite(pin_wake_rpi, LOW);
+  delay(100);
+  digitalWrite(pin_wake_rpi, HIGH);
 }

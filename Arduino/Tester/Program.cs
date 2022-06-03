@@ -12,7 +12,8 @@ public enum Commands : byte
     TestInputs,
     ReadLightSensor,
     VerboseEnable,
-    VerboseDisable
+    VerboseDisable,
+    BootPi
 }
 
 public record CommandInfo(
@@ -131,6 +132,7 @@ public class Program : IDisposable
     [Command(Commands.CycleOutputs)]
     [Command(Commands.VerboseEnable)]
     [Command(Commands.VerboseDisable)]
+    [Command(Commands.BootPi)]
     private void GenericCommand(Commands command)
     {
         _port.Write(new byte[] { (byte)command }, 0, 1);
