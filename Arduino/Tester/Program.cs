@@ -9,7 +9,10 @@ public enum Commands : byte
     SetDatetime,
     CycleLed,
     CycleOutputs,
-    TestInputs
+    TestInputs,
+    ReadLightSensor,
+    VerboseEnable,
+    VerboseDisable
 }
 
 public record CommandInfo(
@@ -126,11 +129,12 @@ public class Program : IDisposable
     [Command(Commands.Now)]
     [Command(Commands.CycleLed)]
     [Command(Commands.CycleOutputs)]
+    [Command(Commands.VerboseEnable)]
+    [Command(Commands.VerboseDisable)]
     private void GenericCommand(Commands command)
     {
         _port.Write(new byte[] { (byte)command }, 0, 1);
     }
-
 
     [Command(Commands.TestInputs)]
     private void TestInputs(Commands command)
@@ -155,6 +159,31 @@ public class Program : IDisposable
             (byte)now.Second
         };
         _port.Write(send, 0, send.Length);
+    }
+
+    [Command(Commands.ReadLightSensor)]
+    private void ReadLightSensor(Commands command)
+    {
+        Console.Write("Press enter to exit.");
+        var last = DateTimeOffset.MinValue;
+        while (true)
+        {
+            if (Console.KeyAvailable)
+            {
+                var key = Console.ReadKey();
+                if (key.Key == ConsoleKey.Enter)
+                {
+                    break;
+                }
+            }
+
+            var now = DateTimeOffset.Now;
+            if (now - last > TimeSpan.FromSeconds(3))
+            {
+                last = now;
+                _port.Write(new byte[] { (byte)Commands.ReadLightSensor }, 0, 1);
+            }
+        }
     }
 
     public void Dispose()

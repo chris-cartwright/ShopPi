@@ -10,6 +10,9 @@ const byte cmd_set_datetime = 0x02;
 const byte cmd_cycle_led = 0x03;
 const byte cmd_cycle_outputs = 0x04;
 const byte cmd_test_inputs = 0x05;
+const byte cmd_read_light_sensor = 0x06;
+const byte cmd_verbose_enable = 0x07;
+const byte cmd_verbose_disable = 0x08;
 
 /* Pins */
 const byte pin_light_sensor = A0;
@@ -34,6 +37,11 @@ Clock clock = Clock(rtc);
 byte inputs = 0;
 byte outputs = 0;
 byte brightness = 128;
+byte notif_red = 0;
+byte notif_green = 0;
+byte notif_blue = 0;
+
+volatile bool verbose = false;
 
 void setup() {
   Serial.begin(115200);
@@ -45,24 +53,50 @@ void setup() {
   pinMode(pin_clock, OUTPUT);
   pinMode(pin_latch, OUTPUT);
   pinMode(pin_button_brightness, OUTPUT);
-  analogWrite(pin_button_brightness, brightness);
 
+  // Set brightness before initializing LEDs.
+  readAmbient();
+  
   // Init all outputs to off.
   setShiftRegisters();
 
-  setNotifLed(0, 255, 0);
+  notif_green = 255;
+  setNotifLed();
 }
 
 void loop() {
   clock.tick();
-
+  readAmbient();
   if (Serial.available()) {
     handleCommand();
   }
 }
 
+void readAmbient() {
+  static unsigned long lastCheck = 0;
+
+  unsigned long now = millis();
+  if(now - lastCheck < 1000) {
+    return;
+  }
+
+  lastCheck = now;
+  
+  int ambient = analogRead(pin_light_sensor);
+  int mapped = map(ambient, 500, 1024, 0, 255);
+  brightness = constrain(mapped, 31, 255);
+  
+  analogWrite(pin_button_brightness, brightness);
+  setNotifLed();
+}
+
 void handleCommand() {
   byte cmd = Serial.read();
+  if (verbose) {
+    Serial.print("CMD: ");
+    Serial.println(cmd, HEX);
+  }
+
   if (cmd == cmd_now) {
     sendTime();
   }
@@ -148,7 +182,7 @@ void handleCommand() {
     outputs = 0xFF;
     setShiftRegisters();
   }
-  else if (cmd_test_inputs) {
+  else if (cmd == cmd_test_inputs) {
     Serial.print("INPUTS: ");
 
     byte prev = 0;
@@ -170,6 +204,18 @@ void handleCommand() {
 
     Serial.println("done.");
   }
+  else if (cmd == cmd_read_light_sensor) {
+    Serial.print("LIGHT: ");
+    Serial.println(analogRead(pin_light_sensor), DEC);
+  }
+  else if (cmd == cmd_verbose_enable) {
+    verbose = true;
+    Serial.println("Verbose enabled.");
+  }
+  else if (cmd == cmd_verbose_disable) {
+    verbose = false;
+    Serial.println("Verbose disabled.");
+  }
   else {
     Serial.println("ERROR: Unknown command");
   }
@@ -181,13 +227,16 @@ byte readButtons() {
     inputs = 1 << i;
     setShiftRegisters();
     delay(10);
-    
+
     if (digitalRead(pin_buttons) == HIGH) {
       ret += inputs;
     }
   }
 
-  //Serial.print("BUTTONS: "); Serial.println(ret, BIN);
+  if (verbose) {
+    Serial.print("BUTTONS: ");
+    Serial.println(ret, BIN);
+  }
   return ret;
 }
 
@@ -211,21 +260,21 @@ void setShiftRegisters() {
   // First byte shifted out ends up on the chip farthest down the chain.
   shiftOut(pin_data, pin_clock, MSBFIRST, inputs);
   shiftOut(pin_data, pin_clock, MSBFIRST, outputs);
-  
+
   digitalWrite(pin_latch, HIGH);
   digitalWrite(pin_latch, LOW);
 }
 
-void setNotifLed(byte red, byte green, byte blue) {
+void setNotifLed() {
   // Notification LED is bright. Constrained!
   byte bright = map(brightness, 0, 255, 0, 127);
 
   // Map the colours.
   bright = map(bright, 0, 255, 255, 0);
-  byte r = map(red, 0, 255, 255, bright);
-  byte g = map(green, 0, 255, 255, bright);
-  byte b = map(blue, 0, 255, 255, bright);
-  
+  byte r = map(notif_red, 0, 255, 255, bright);
+  byte g = map(notif_green, 0, 255, 255, bright);
+  byte b = map(notif_blue, 0, 255, 255, bright);
+
   analogWrite(pin_led_red, r);
   analogWrite(pin_led_green, g);
   analogWrite(pin_led_blue, b);
