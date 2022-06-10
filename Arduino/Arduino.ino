@@ -5,6 +5,8 @@
 #include "Clock.h"
 #include "Heartbeat.h"
 
+//#define DEBUG
+
 /* Commands */
 const byte cmd_now = 0x01;
 const byte cmd_set_datetime = 0x02;
@@ -17,6 +19,9 @@ const byte cmd_verbose_disable = 0x08;
 const byte cmd_boot_rpi = 0x09;
 const byte cmd_sync = 0x0A;
 const byte cmd_ack = 0x0B;
+const byte cmd_poweroff = 0x0C;
+const byte cmd_screen_on = 0x0D;
+const byte cmd_screen_off = 0x0E;
 
 /* Pins */
 const byte pin_light_sensor = A0;
@@ -34,6 +39,10 @@ const byte pin_led_red = 6;
 const byte pin_led_green = 5;
 const byte pin_led_blue = 9;
 
+/* Port mappings */
+const byte port_rpi = 0b00000001;
+const byte port_rpi_screen = 0b00000010;
+
 /* Variables */
 RTC_DS1307 rtc;
 Clock clock = Clock(rtc);
@@ -48,6 +57,7 @@ byte notif_blue = 0;
 
 volatile bool verbose = false;
 bool piHealthy = false;
+bool piScreenOn = false;
 
 void setup() {
   Serial.begin(115200);
@@ -83,7 +93,7 @@ void loop() {
   }
 
   heartbeat.tick();
-  if(piHealthy && heartbeat.running() && !heartbeat.healthy()) {
+  if (piHealthy && heartbeat.running() && !heartbeat.healthy()) {
     piHealthy = false;
     notif_red = 255;
     notif_green = 0;
@@ -91,13 +101,61 @@ void loop() {
     setNotifLed();
   }
 
-  if(!piHealthy && heartbeat.running() && heartbeat.healthy()) {
+  if (!piHealthy && heartbeat.running() && heartbeat.healthy()) {
     piHealthy = true;
     notif_red = 0;
     notif_green = 255;
     notif_blue = 0;
     setNotifLed();
   }
+
+  byte buttons = readButtons();
+
+  if (buttons & port_rpi) {
+    if (!heartbeat.running()) {
+      bootRpi();
+      heartbeat.begin();
+
+      // Set to true so the unhealthy check above will be triggered.
+      piHealthy = true;
+    }
+
+    outputs &= ~port_rpi;
+  }
+  else {
+    if (heartbeat.running()) {
+      Serial.write(cmd_poweroff);
+      heartbeat.suspend();
+      piHealthy = false;
+      
+      notif_red = 0;
+      notif_green = 255;
+      notif_blue = 0;
+      setNotifLed();
+    }
+
+    outputs |= port_rpi;
+  }
+
+  if (buttons & port_rpi_screen) {
+    if (piScreenOn) {
+      Serial.write(cmd_screen_off);
+      piScreenOn = false;
+    }
+
+    outputs |= port_rpi_screen;
+  }
+  else {
+    if (!piScreenOn) {
+      Serial.write(cmd_screen_on);
+      piScreenOn = true;
+    }
+
+    outputs &= ~port_rpi_screen;
+  }
+
+  // Update state of outputs
+  setShiftRegisters();
 }
 
 void readAmbient() {
@@ -204,7 +262,7 @@ void handleCommand() {
     outputs = 0;
     setShiftRegisters();
 
-    Serial.print("BIGHTNESS: ");
+    Serial.print("BRIGHTNESS: ");
     outputs = 0xFF;
     setShiftRegisters();
 
@@ -254,13 +312,13 @@ void handleCommand() {
     Serial.println("Verbose disabled.");
   }
   else if (cmd == cmd_boot_rpi) {
-    boot_rpi();
+    bootRpi();
     Serial.println("Boot triggered.");
   }
   else if (cmd == cmd_sync) {
     clock.sync();
   }
-  else if(cmd == cmd_ack) {
+  else if (cmd == cmd_ack) {
     Serial.write(cmd_ack);
   }
   else {
@@ -281,10 +339,13 @@ byte readButtons() {
     }
   }
 
+#if DEBUG
   if (verbose) {
     Serial.print("BUTTONS: ");
     Serial.println(ret, BIN);
   }
+#endif
+
   return ret;
 }
 
@@ -310,6 +371,16 @@ void sendTime() {
 }
 
 void setShiftRegisters() {
+  static byte prevInputs;
+  static byte prevOutputs;
+
+  if (prevInputs == inputs && prevOutputs == outputs) {
+    return;
+  }
+
+  prevInputs = inputs;
+  prevOutputs = outputs;
+
   // First byte shifted out ends up on the chip farthest down the chain.
   shiftOut(pin_data, pin_clock, MSBFIRST, inputs);
   shiftOut(pin_data, pin_clock, MSBFIRST, outputs);
@@ -340,7 +411,7 @@ void ledOff() {
   analogWrite(pin_led_blue, 255);
 }
 
-void boot_rpi() {
+void bootRpi() {
   if (verbose) {
     Serial.println("Booting RPi.");
   }

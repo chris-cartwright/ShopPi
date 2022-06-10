@@ -1,4 +1,5 @@
 extern const byte cmd_ack;
+extern volatile bool verbose;
 
 class Heartbeat {
     bool _running = false;
@@ -9,14 +10,21 @@ class Heartbeat {
   public:
     void begin() {
       _running = true;
-
       // Start with a check.
       _last = 0;
+
+      if(verbose) {
+        Serial.println("HEARTBEAT: Start");
+      }
     }
 
     void suspend() {
       _running = false;
       _healthy = false;
+
+      if(verbose) {
+        Serial.println("HEARTBEAT: Suspend");
+      }
     }
 
     bool running() {
@@ -28,6 +36,10 @@ class Heartbeat {
     }
 
     void tick() {
+      if(!_running) {
+        return;
+      }
+      
       if (millis() - _last < _frequency) {
         return;
       }
