@@ -14,6 +14,7 @@ const byte cmd_read_light_sensor = 0x06;
 const byte cmd_verbose_enable = 0x07;
 const byte cmd_verbose_disable = 0x08;
 const byte cmd_boot_rpi = 0x09;
+const byte cmd_sync = 0x0A;
 
 /* Pins */
 const byte pin_light_sensor = A0;
@@ -62,7 +63,7 @@ void setup() {
 
   // Set brightness before initializing LEDs.
   readAmbient();
-  
+
   // Init all outputs to off.
   setShiftRegisters();
 
@@ -82,16 +83,16 @@ void readAmbient() {
   static unsigned long lastCheck = 0;
 
   unsigned long now = millis();
-  if(now - lastCheck < 1000) {
+  if (now - lastCheck < 1000) {
     return;
   }
 
   lastCheck = now;
-  
+
   int ambient = analogRead(pin_light_sensor);
   int mapped = map(ambient, 500, 1024, 0, 255);
   brightness = constrain(mapped, 31, 255);
-  
+
   analogWrite(pin_button_brightness, brightness);
   setNotifLed();
 }
@@ -110,6 +111,8 @@ void handleCommand() {
     byte buffer[6];
     Serial.readBytes(buffer, 6);
 
+    Serial.println();
+
     DateTime newTime = DateTime(
                          buffer[0] + 2000,
                          buffer[1],
@@ -118,8 +121,15 @@ void handleCommand() {
                          buffer[4],
                          buffer[5]
                        );
-    rtc.adjust(newTime);
 
+    Serial.print("RECV: ");
+    char *str = "YYYY-MM-DD hh:mm:ss";
+    Serial.println(newTime.toString(str));
+
+    rtc.adjust(newTime);
+    clock.sync();
+
+    Serial.print("SET: ");
     sendTime();
   }
   else if (cmd == cmd_cycle_led) {
@@ -222,9 +232,12 @@ void handleCommand() {
     verbose = false;
     Serial.println("Verbose disabled.");
   }
-  else if(cmd == cmd_boot_rpi) {
+  else if (cmd == cmd_boot_rpi) {
     boot_rpi();
     Serial.println("Boot triggered.");
+  }
+  else if (cmd == cmd_sync) {
+    clock.sync();
   }
   else {
     Serial.print("ERROR: Unknown command ");
@@ -252,6 +265,11 @@ byte readButtons() {
 }
 
 void sendTime() {
+  if (!rtc.isrunning()) {
+    Serial.println("RTC not running.");
+    return;
+  }
+
   DateTime now = rtc.now();
   Serial.print(now.year(), DEC);
   Serial.print('/');
@@ -299,10 +317,10 @@ void ledOff() {
 }
 
 void boot_rpi() {
-  if(verbose) {
+  if (verbose) {
     Serial.println("Booting RPi.");
   }
-  
+
   digitalWrite(pin_wake_rpi, LOW);
   delay(100);
   digitalWrite(pin_wake_rpi, HIGH);

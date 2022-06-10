@@ -4,8 +4,11 @@ namespace Tester;
 public class CommandAttribute : Attribute
 {
     public Commands Command { get; }
-    public CommandAttribute(Commands command)
+    public string? Description { get; }
+
+    public CommandAttribute(Commands command, string? description = null)
     {
         Command = command;
+        Description = description;
     }
 }

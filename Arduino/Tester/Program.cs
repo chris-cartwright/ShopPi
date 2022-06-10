@@ -1,5 +1,6 @@
 ﻿using System.IO.Ports;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Tester;
 
@@ -13,12 +14,14 @@ public enum Commands : byte
     ReadLightSensor,
     VerboseEnable,
     VerboseDisable,
-    BootPi
+    BootPi,
+    Sync
 }
 
 public record CommandInfo(
     Commands Command,
-    Action<Commands> Action,
+    string? Description,
+    Func<Commands, Task> FuncAsync,
     string Name
 );
 
@@ -61,7 +64,7 @@ public class Program : IDisposable
             Console.WriteLine("Available commands:");
             foreach (var info in commands.Values)
             {
-                Console.WriteLine($"{(int)info.Command} - {info.Name}");
+                Console.WriteLine($"{(int)info.Command} - {info.Name}: {info.Description}");
             }
 
             Console.Write("Enter a command: ");
@@ -83,8 +86,7 @@ public class Program : IDisposable
                 continue;
             }
 
-            found.Action((Commands)cmd);
-            Console.WriteLine("Command sent.");
+            await found.FuncAsync((Commands)cmd);
         }
     }
 
@@ -99,7 +101,8 @@ public class Program : IDisposable
             orderby attr.Command
             select new CommandInfo(
                 attr.Command,
-                (Action<Commands>)Delegate.CreateDelegate(typeof(Action<Commands>), this, method),
+                attr.Description,
+                (Func<Commands, Task>)Delegate.CreateDelegate(typeof(Func<Commands, Task>), this, method),
                 Enum.GetName<Commands>(attr.Command)
             );
         return cmds.ToDictionary(k => k.Command, v => v);
@@ -127,28 +130,37 @@ public class Program : IDisposable
         }
     }
 
-    [Command(Commands.Now)]
+    [Command(Commands.Now, "Read and return values in RTC.")]
     [Command(Commands.CycleLed)]
     [Command(Commands.CycleOutputs)]
     [Command(Commands.VerboseEnable)]
     [Command(Commands.VerboseDisable)]
     [Command(Commands.BootPi)]
-    private void GenericCommand(Commands command)
+    [Command(Commands.Sync, "Set local time counters to values in RTC.")]
+    private async Task GenericCommand(Commands command)
     {
         _port.Write(new byte[] { (byte)command }, 0, 1);
+        Console.WriteLine("Command sent.");
+
+        // Small delay in case command has output.
+        // This could be fancier and watch the serial port for
+        // activity... but meh.
+        await Task.Delay(5_000);
     }
 
     [Command(Commands.TestInputs)]
-    private void TestInputs(Commands command)
+    private Task TestInputs(Commands command)
     {
         Console.Write("Press enter to exit.");
         _port.Write(new byte[] { (byte)Commands.TestInputs }, 0, 1);
         Console.ReadLine();
         _port.Write(new byte[] { 0xFF }, 0, 1);
+
+        return Task.CompletedTask;
     }
 
     [Command(Commands.SetDatetime)]
-    private void SetDateTime(Commands command)
+    private Task SetDateTime(Commands command)
     {
         var now = DateTimeOffset.Now;
         var send = new byte[] {
@@ -161,10 +173,14 @@ public class Program : IDisposable
             (byte)now.Second
         };
         _port.Write(send, 0, send.Length);
+
+        Console.WriteLine("Command sent.");
+
+        return Task.CompletedTask;
     }
 
     [Command(Commands.ReadLightSensor)]
-    private void ReadLightSensor(Commands command)
+    private Task ReadLightSensor(Commands command)
     {
         Console.Write("Press enter to exit.");
         var last = DateTimeOffset.MinValue;
@@ -186,6 +202,8 @@ public class Program : IDisposable
                 _port.Write(new byte[] { (byte)Commands.ReadLightSensor }, 0, 1);
             }
         }
+
+        return Task.CompletedTask;
     }
 
     public void Dispose()
