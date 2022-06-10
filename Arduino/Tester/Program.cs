@@ -15,7 +15,8 @@ public enum Commands : byte
     VerboseEnable,
     VerboseDisable,
     BootPi,
-    Sync
+    Sync,
+    Ack
 }
 
 public record CommandInfo(
@@ -35,6 +36,7 @@ public class Program : IDisposable
 
     private SerialPort? _port;
     private CancellationTokenSource _cancel = new();
+    private bool _pauseReader;
 
     public async Task RunAsync()
     {
@@ -112,7 +114,7 @@ public class Program : IDisposable
     {
         while (!_cancel.IsCancellationRequested)
         {
-            if (_port is null || !_port.IsOpen)
+            if (_port is null || !_port.IsOpen || _pauseReader)
             {
                 continue;
             }
@@ -121,7 +123,15 @@ public class Program : IDisposable
             {
                 if (_port.BytesToRead > 0)
                 {
-                    Console.Write((char)_port.ReadByte());
+                    byte b = (byte)_port.ReadByte();
+                    if (b == (byte)Commands.Ack)
+                    {
+                        _port.Write(new byte[] { (byte)Commands.Ack }, 0, 1);
+                    }
+                    else
+                    {
+                        Console.Write((char)b);
+                    }
                 }
             }
             catch (TimeoutException)
@@ -204,6 +214,51 @@ public class Program : IDisposable
         }
 
         return Task.CompletedTask;
+    }
+
+    [Command(Commands.Ack)]
+    private async Task Ack(Commands command)
+    {
+        _pauseReader = true;
+        _port.Write(new byte[] { (byte)Commands.Ack }, 0, 1);
+        try
+        {
+            var counter = 0;
+            while (_port.BytesToRead == 0)
+            {
+                await Task.Delay(1);
+
+                counter++;
+                if (counter >= 1_000)
+                {
+                    Console.WriteLine("No response.");
+                    return;
+                }
+            }
+
+            byte b = (byte)_port.ReadByte();
+            if (b == (byte)Commands.Ack)
+            {
+                Console.WriteLine("ACK'd!");
+            }
+            else if (b == 'E')
+            {
+                // Begginging of an error message.
+                Console.Write("E");
+
+                // Wait for it to finish.
+                _pauseReader = false;
+                await Task.Delay(1_000);
+            }
+            else
+            {
+                Console.WriteLine($"Received unknown: {(char)b}");
+            }
+        }
+        finally
+        {
+            _pauseReader = false;
+        }
     }
 
     public void Dispose()

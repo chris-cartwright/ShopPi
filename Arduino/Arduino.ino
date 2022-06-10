@@ -3,6 +3,7 @@
 #include <RTClib.h>
 
 #include "Clock.h"
+#include "Heartbeat.h"
 
 /* Commands */
 const byte cmd_now = 0x01;
@@ -15,6 +16,7 @@ const byte cmd_verbose_enable = 0x07;
 const byte cmd_verbose_disable = 0x08;
 const byte cmd_boot_rpi = 0x09;
 const byte cmd_sync = 0x0A;
+const byte cmd_ack = 0x0B;
 
 /* Pins */
 const byte pin_light_sensor = A0;
@@ -35,6 +37,7 @@ const byte pin_led_blue = 9;
 /* Variables */
 RTC_DS1307 rtc;
 Clock clock = Clock(rtc);
+Heartbeat heartbeat;
 
 byte inputs = 0;
 byte outputs = 0;
@@ -44,6 +47,7 @@ byte notif_green = 0;
 byte notif_blue = 0;
 
 volatile bool verbose = false;
+bool piHealthy = false;
 
 void setup() {
   Serial.begin(115200);
@@ -76,6 +80,23 @@ void loop() {
   readAmbient();
   if (Serial.available()) {
     handleCommand();
+  }
+
+  heartbeat.tick();
+  if(piHealthy && heartbeat.running() && !heartbeat.healthy()) {
+    piHealthy = false;
+    notif_red = 255;
+    notif_green = 0;
+    notif_blue = 0;
+    setNotifLed();
+  }
+
+  if(!piHealthy && heartbeat.running() && heartbeat.healthy()) {
+    piHealthy = true;
+    notif_red = 0;
+    notif_green = 255;
+    notif_blue = 0;
+    setNotifLed();
   }
 }
 
@@ -238,6 +259,9 @@ void handleCommand() {
   }
   else if (cmd == cmd_sync) {
     clock.sync();
+  }
+  else if(cmd == cmd_ack) {
+    Serial.write(cmd_ack);
   }
   else {
     Serial.print("ERROR: Unknown command ");
