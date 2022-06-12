@@ -61,10 +61,10 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/api/echo", [Authorize] (string msg) => Results.Ok($"Echo: {msg}"));
 
-app.MapGet("/api/spotify/authorize", [Authorize] async (IConfiguration config) =>
+app.MapGet("/api/spotify/authorize", [Authorize] async (Util.Users user, IConfiguration config) =>
 {
     var state = Util.RandomString(14);
-    await Storage.AddStateAsync(state);
+    await Storage.AddStateAsync(user, state);
 
     var scopes = new[]
     {
@@ -88,7 +88,8 @@ app.MapGet("/api/spotify/authorize", [Authorize] async (IConfiguration config) =
 
 app.MapGet("/api/spotify/callback", async (string state, string code, IConfiguration config) =>
 {
-    if (!await Storage.StateExistsAsync(state))
+    var user = await Storage.GetUserForStateAsync(state);
+    if (user is null)
     {
         return Results.Redirect("/?error=Invalid state returned.");
     }
@@ -100,24 +101,24 @@ app.MapGet("/api/spotify/callback", async (string state, string code, IConfigura
         ["grant_type"] = "authorization_code"
     };
 
-    var rawToken = await Util.GetTokenAsync(config, form);
+    var rawToken = await Util.GetTokenAsync(user.Value, config, form);
     if (rawToken is null)
     {
         return Results.Redirect("/?error=Failed to obtain access token.");
     }
 
     var token = new SpotifyToken(
-        rawToken.Value.Access,
-        rawToken.Value.Refresh!,
-        rawToken.Value.Expires
+        rawToken.Access,
+        rawToken.Refresh!,
+        rawToken.Expires
     );
-    await Storage.SetTokenAsync(token);
+    await Storage.SetTokenAsync(user.Value, token);
     return Results.Redirect("/");
 });
 
-app.MapGet("/api/spotify/token", [Authorize] async (IConfiguration config) =>
+app.MapGet("/api/spotify/token", [Authorize] async (Util.Users user, IConfiguration config) =>
 {
-    var token = await Storage.GetTokenAsync();
+    var token = await Storage.GetTokenAsync(user);
     if (token is null)
     {
         return Results.NotFound();
@@ -134,25 +135,25 @@ app.MapGet("/api/spotify/token", [Authorize] async (IConfiguration config) =>
         ["grant_type"] = "refresh_token"
     };
 
-    var rawToken = await Util.GetTokenAsync(config, form);
+    var rawToken = await Util.GetTokenAsync(user, config, form);
     if (rawToken is null)
     {
-        await Storage.SetTokenAsync(null);
+        await Storage.SetTokenAsync(user, null);
         return Results.NotFound();
     }
 
     token = new SpotifyToken(
-        rawToken.Value.Access,
-        rawToken.Value.Refresh ?? token.Refresh,
-        rawToken.Value.Expires
+        rawToken.Access,
+        rawToken.Refresh ?? token.Refresh,
+        rawToken.Expires
     );
-    await Storage.SetTokenAsync(token);
+    await Storage.SetTokenAsync(user, token);
     return Results.Ok(token.Access);
 });
 
-app.MapDelete("/api/spotify/token", [Authorize] async () =>
+app.MapDelete("/api/spotify/token", [Authorize] async (Util.Users user) =>
 {
-    await Storage.SetTokenAsync(null);
+    await Storage.SetTokenAsync(user, null);
 });
 
 app.Run();

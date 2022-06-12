@@ -1,6 +1,12 @@
 <script lang="ts">
-    import { Spotify } from "./api";
-    import { derived, readable, Readable, writable } from "svelte/store";
+    import { Spotify, Users } from "./api";
+    import {
+        derived,
+        readable,
+        Readable,
+        Unsubscriber,
+        writable,
+    } from "svelte/store";
     import ky from "ky";
     import Pulse from "@svicons/open-iconic/pulse.svelte";
     import MediaPlay from "@svicons/open-iconic/media-play.svelte";
@@ -22,7 +28,9 @@
     }
 
     let enabled = false;
-    let authenticated = Spotify.isAuthenticated;
+    let user = writable<Users>("Chris");
+    let authenticated = writable<boolean>(false);
+    let authenticatedUnsub: Unsubscriber | null = null;
     let api: typeof ky | null = null;
     let token: string;
     let tokenInterval: NodeJS.Timer | null = null;
@@ -32,21 +40,43 @@
     let disableCountdown: Readable<number> | null = null;
     let formattedDisabledCountdown: Readable<string> | null = null;
 
-    (async function () {
-        token = await Spotify.getToken();
-        api = ky.extend({
-            prefixUrl: "https://api.spotify.com/v1/me",
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+    user.subscribe(async (u) => {
+        if (enabled) {
+            disable();
+        }
+
+        if (authenticatedUnsub != null) {
+            authenticatedUnsub();
+        }
+
+        authenticatedUnsub = Spotify.isAuthenticated(u).subscribe((auth) => {
+            authenticated.set(auth);
         });
+
+        getToken();
+    });
+
+    (async function () {
+        $user = "Chris";
     })();
 
+    async function getToken() {
+        token = await Spotify.getToken($user);
+        api =
+            token == null
+                ? null
+                : ky.extend({
+                      prefixUrl: "https://api.spotify.com/v1/me",
+                      headers: {
+                          Authorization: `Bearer ${token}`,
+                      },
+                  });
+    }
+
     function startTokenLoop() {
+        getToken();
         // Keep the token refreshed while active.
-        tokenInterval = setInterval(async () => {
-            token = await Spotify.getToken();
-        }, 60_000);
+        tokenInterval = setInterval(getToken, 60_000);
     }
 
     function stopTokenLoop() {
@@ -139,7 +169,7 @@
     }
 
     async function login() {
-        let url = await Spotify.getLoginUrl();
+        let url = await Spotify.getLoginUrl($user);
         window.location.href = url;
     }
 
@@ -192,86 +222,119 @@
 </script>
 
 <div class="container">
-    {#if $authenticated}
-        <div class="row align-items-center">
-            <div class="col-1">
-                <button
-                    class="btn {enabled ? 'btn-success' : 'btn-secondary'}"
-                    class:active={enabled}
-                    on:click={toggleEnabled}
-                >
-                    <Pulse width="1em" />
-                </button>
-            </div>
-            <div class="col-1">
-                <button
-                    class="btn btn-primary"
-                    on:click={playPause}
-                    disabled={!enabled}
-                >
-                    {#if $playing}
-                        <MediaPause width="1em" />
-                    {:else}
-                        <MediaPlay width="1em" />
-                    {/if}
-                </button>
-            </div>
-            <div class="col-1">
-                <button
-                    class="btn btn-secondary"
-                    on:click={previous}
-                    disabled={!enabled}
-                >
-                    <MediaSkipBackward width="1em" />
-                </button>
-            </div>
-            <div class="col-1">
-                <button
-                    class="btn btn-secondary"
-                    on:click={next}
-                    disabled={!enabled}
-                >
-                    <MediaSkipForward width="1em" />
-                </button>
-            </div>
-            <div class="col-1">
-                <button
-                    class="btn {$state.isFavourite
-                        ? 'btn-success'
-                        : 'btn-secondary'}"
-                    on:click={toggleFavourite}
-                    disabled={!enabled}
-                >
-                    <Heart width="1em" />
-                </button>
-            </div>
-            <div class="col-6">
-                <div class="container">
-                    <div class="row">
-                        {#if $state.playing}
-                            {$state.songTitle} - {$state.songArtist}
-                        {/if}
+    <div class="row">
+        <div class="btn-group">
+            <input
+                type="radio"
+                class="btn-check"
+                name="user"
+                bind:group={$user}
+                value="Chris"
+                id="chris"
+                autocomplete="off"
+                checked
+            />
+            <label class="btn btn-outline-primary" for="chris"> Chris </label>
+
+            <input
+                type="radio"
+                class="btn-check"
+                name="user"
+                bind:group={$user}
+                value="Courtney"
+                id="courtney"
+                autocomplete="off"
+            />
+            <label class="btn btn-outline-primary" for="courtney">
+                Courtney
+            </label>
+        </div>
+    </div>
+    <div class="row m-3">
+        {#if $authenticated}
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-1">
+                        <button
+                            class="btn {enabled
+                                ? 'btn-success'
+                                : 'btn-secondary'}"
+                            class:active={enabled}
+                            on:click={toggleEnabled}
+                        >
+                            <Pulse width="1em" />
+                        </button>
+                    </div>
+                    <div class="col-1">
+                        <button
+                            class="btn btn-primary"
+                            on:click={playPause}
+                            disabled={!enabled}
+                        >
+                            {#if $playing}
+                                <MediaPause width="1em" />
+                            {:else}
+                                <MediaPlay width="1em" />
+                            {/if}
+                        </button>
+                    </div>
+                    <div class="col-1">
+                        <button
+                            class="btn btn-secondary"
+                            on:click={previous}
+                            disabled={!enabled}
+                        >
+                            <MediaSkipBackward width="1em" />
+                        </button>
+                    </div>
+                    <div class="col-1">
+                        <button
+                            class="btn btn-secondary"
+                            on:click={next}
+                            disabled={!enabled}
+                        >
+                            <MediaSkipForward width="1em" />
+                        </button>
+                    </div>
+                    <div class="col-1">
+                        <button
+                            class="btn {$state.isFavourite
+                                ? 'btn-success'
+                                : 'btn-secondary'}"
+                            on:click={toggleFavourite}
+                            disabled={!enabled}
+                        >
+                            <Heart width="1em" />
+                        </button>
+                    </div>
+                    <div class="col-1">
+                        <div class="text-secondary">
+                            {#if enabled}
+                                {$formattedDisabledCountdown}
+                            {:else}
+                                N/A
+                            {/if}
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-1">
-                <div class="text-secondary">
-                    {#if enabled}
-                        {$formattedDisabledCountdown}
-                    {:else}
-                        N/A
+        {/if}
+    </div>
+    <div class="row m-3">
+        {#if $authenticated}
+            <div class="container">
+                <div class="row">
+                    {#if $state.playing}
+                        {$state.songTitle} - {$state.songArtist}
                     {/if}
                 </div>
             </div>
-        </div>
-    {:else}
-        <div class="row">
+        {:else}
             <p>
-                No account information found. Please click <a
-                    href="/"
-                    on:click|preventDefault={login}>here</a
-                > to log in.
+                No account information found. Please click
+                <a href="/" on:click|preventDefault={login}>here</a>
+                to log in.
             </p>
-        </div>
-    {/if}
+        {/if}
+    </div>
 </div>

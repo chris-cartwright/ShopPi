@@ -1,6 +1,11 @@
-import { writable } from "svelte/store";
+import { Readable, Writable, writable } from "svelte/store";
 
-const isAuthenticatedStore = writable(false);
+export type Users = 'Chris' | 'Courtney';
+
+const isAuthenticatedStores: { [key in Users]: Writable<boolean> } = {
+    'Chris': writable(false),
+    'Courtney': writable(false)
+};
 
 function getApiKey() {
     const key = localStorage.getItem('api-key');
@@ -23,7 +28,7 @@ function prefixServerUrl(path: string) {
 
 type ApiOptions = Omit<Parameters<typeof fetch>[1], 'method'> & { 'api-key'?: string };
 
-async function apiGet(url: string, opts: ApiOptions = {}): ReturnType<typeof fetch> {
+async function apiGet(url: string, opts: ApiOptions = {}): Promise<ReturnType<typeof fetch>> {
     let fullUrl = prefixServerUrl(url);
     let composed = { ...opts, ...{ method: 'GET' } };
     if (composed.headers == null) {
@@ -34,7 +39,7 @@ async function apiGet(url: string, opts: ApiOptions = {}): ReturnType<typeof fet
     return await fetch(fullUrl, composed);
 }
 
-async function apiPost(url: string, opts: ApiOptions = {}): ReturnType<typeof fetch> {
+async function apiPost(url: string, opts: ApiOptions = {}): Promise<ReturnType<typeof fetch>> {
     let fullUrl = prefixServerUrl(url);
     let composed = { ...opts, ...{ method: 'POST' } };
     if (composed.headers == null) {
@@ -58,25 +63,27 @@ export const General = {
 }
 
 export const Spotify = {
-    isAuthenticated: { subscribe: isAuthenticatedStore.subscribe },
-    async getToken(): Promise<string | null> {
-        let response = await apiGet('/spotify/token');
+    isAuthenticated(user: Users): Readable<boolean> {
+        return { subscribe: isAuthenticatedStores[user].subscribe };
+    },
+    async getToken(user: Users): Promise<string | null> {
+        let response = await apiGet('/spotify/token?user=' + user);
         if (response.status == 404) {
-            isAuthenticatedStore.set(false);
+            isAuthenticatedStores[user].set(false);
             return null;
         }
 
         if (response.status != 200) {
-            isAuthenticatedStore.set(false);
+            isAuthenticatedStores[user].set(false);
             console.error('Could not get token.', response);
             return null;
         }
 
-        isAuthenticatedStore.set(true);
+        isAuthenticatedStores[user].set(true);
         return response.json();
     },
-    async getLoginUrl(): Promise<string> {
-        let response = await apiGet('/spotify/authorize');
+    async getLoginUrl(user: Users): Promise<string> {
+        let response = await apiGet('/spotify/authorize?user=' + user);
         if (response.status != 200) {
             console.error('Could not get authorization URL.', response);
             throw new Error('Could not get authorization URL.');
