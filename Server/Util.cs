@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO.Ports;
 using System.Text;
 
 namespace ShopPi
@@ -54,6 +55,11 @@ namespace ShopPi
 
             var expires = DateTimeOffset.Now + TimeSpan.FromSeconds(rawToken.expires_in);
             return new Token(rawToken.access_token, rawToken.refresh_token, expires);
+        }
+
+        public static void WriteBytes(this SerialPort port, params byte[] bytes)
+        {
+            port.Write(bytes, 0, bytes.Length);
         }
     }
 }

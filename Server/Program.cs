@@ -8,6 +8,7 @@ const string corsPolicyName = "CorsPolicy";
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddSingleton<Manager>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAuthorization();
