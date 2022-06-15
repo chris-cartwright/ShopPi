@@ -33,7 +33,8 @@ const byte pin_button_brightness = 10;
 
 const byte pin_data = 8;
 const byte pin_clock = 7;
-const byte pin_latch = 4;
+const byte pin_latch_outputs = 4;
+const byte pin_latch_inputs = 3;
 
 const byte pin_led_red = 6;
 const byte pin_led_green = 5;
@@ -67,7 +68,8 @@ void setup() {
 
   pinMode(pin_data, OUTPUT);
   pinMode(pin_clock, OUTPUT);
-  pinMode(pin_latch, OUTPUT);
+  pinMode(pin_latch_inputs, OUTPUT);
+  pinMode(pin_latch_outputs, OUTPUT);
   pinMode(pin_button_brightness, OUTPUT);
 
   // RPi is booted on the falling edge of this pin.
@@ -127,7 +129,7 @@ void loop() {
       Serial.write(cmd_poweroff);
       heartbeat.suspend();
       piHealthy = false;
-      
+
       notif_red = 0;
       notif_green = 255;
       notif_blue = 0;
@@ -374,19 +376,34 @@ void setShiftRegisters() {
   static byte prevInputs;
   static byte prevOutputs;
 
-  if (prevInputs == inputs && prevOutputs == outputs) {
-    return;
+  // Shift registers set up this way to avoid flickering in the outputs.
+  // That shift register now only latches if the output state changes.
+
+  // Write all bits first, then latch. Still taking advantage of daisy chaining.
+  // First byte shifted out ends up on the chip farthest down the chain.
+  if (prevOutputs != outputs) {
+    shiftOut(pin_data, pin_clock, MSBFIRST, outputs);
+  }
+
+  // Need to write `intputs` if `outputs` has changed so the bits are in the
+  // correct shift register.
+  if (prevInputs != inputs || prevOutputs != outputs) {
+    shiftOut(pin_data, pin_clock, MSBFIRST, inputs);
+  }
+
+  // Latch required registers.
+  if (prevOutputs != outputs) {
+    digitalWrite(pin_latch_outputs, HIGH);
+    digitalWrite(pin_latch_outputs, LOW);
+  }
+
+  if (prevInputs != inputs) {
+    digitalWrite(pin_latch_inputs, HIGH);
+    digitalWrite(pin_latch_inputs, LOW);
   }
 
   prevInputs = inputs;
   prevOutputs = outputs;
-
-  // First byte shifted out ends up on the chip farthest down the chain.
-  shiftOut(pin_data, pin_clock, MSBFIRST, inputs);
-  shiftOut(pin_data, pin_clock, MSBFIRST, outputs);
-
-  digitalWrite(pin_latch, HIGH);
-  digitalWrite(pin_latch, LOW);
 }
 
 void setNotifLed() {
