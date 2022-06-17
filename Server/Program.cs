@@ -158,11 +158,3 @@ app.MapDelete("/api/spotify/token", [Authorize] async (Util.Users user) =>
 });
 
 app.Run();
-
-/*
- * For later
- *
- * Done this way because the redirection ( > ) is handled by the shell, losing sudo.
- * There is a way to do it with `tee` as well, can't remember exactly.
- * sudo bash -c "echo 1 > /sys/class/backlight/rpi_backlight/bl_power"
- */
