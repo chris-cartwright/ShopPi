@@ -27,7 +27,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(ApiKeyDefaults.AuthenticationScheme)
     .AddApiKeyInHeader<ApiKeyProvider>(o =>
@@ -71,12 +70,6 @@ app.UseCors(corsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 // -- End
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
 
 app.MapGet("/api/echo", [Authorize] (string msg) => Results.Ok($"Echo: {msg}"));
 
