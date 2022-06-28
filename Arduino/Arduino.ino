@@ -47,7 +47,7 @@ const byte pin_led_green = 5;
 const byte pin_led_blue = 9;
 
 /* Port mappings */
-const byte port_rpi = 0b00000001;
+const byte port_rpi_power = 0b00000001;
 const byte port_rpi_screen = 0b00000010;
 
 /* Variables */
@@ -119,7 +119,7 @@ void loop() {
 
   byte buttons = readButtons();
 
-  if (buttons & port_rpi) {
+  if (buttons & port_rpi_power) {
     if (!heartbeat.running()) {
       bootRpi();
       heartbeat.begin();
@@ -128,7 +128,7 @@ void loop() {
       piHealthy = true;
     }
 
-    outputs &= ~port_rpi;
+    outputs &= ~port_rpi_power;
   }
   else {
     if (heartbeat.running()) {
@@ -142,7 +142,7 @@ void loop() {
       setNotifLed();
     }
 
-    outputs |= port_rpi;
+    outputs |= port_rpi_power;
   }
 
   if (buttons & port_rpi_screen) {
