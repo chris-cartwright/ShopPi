@@ -48,6 +48,7 @@ class Clock {
       _matrix.begin();
       _matrix.setBrightness(8);
       _readRtc();
+      _writeTime();
     }
 
     void sync() {
@@ -61,16 +62,20 @@ class Clock {
         return;
       }
 
+      bool minuteChanged = false;
+
       // This condition can be met if one of the debugging commands were sent.
       // Some of those commands have long pauses or loops.
       if (diff > 2000) {
         _readRtc();
+        minuteChanged = true;
       }
       else {
         _second++;
         if (_second >= 60) {
           _second = 0;
           _minute++;
+          minuteChanged = true;
           if (_minute >= 60) {
             _minute = 0;
             _hour++;
@@ -86,7 +91,9 @@ class Clock {
 
       // This must come before other write operations!
       // It will override all other changes.
-      _writeTime();
+      if (minuteChanged) {
+        _writeTime();
+      }
 
       _colon = !_colon;
       _matrix.drawColon(_colon);
