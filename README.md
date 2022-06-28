@@ -1,7 +1,25 @@
+# Enable UART on pins
+
+```
+sudo raspi-config
+```
+
+- 3 - Interface options
+- P6 - Serial port
+
+Disable the shell and enable the hardware.
+
+# Use `/dev/serial0`
+
+https://www.raspberrypi.com/documentation/computers/configuration.html#configuring-uarts
+
+Summary: `/dev/ttyS0` and `/dev/AMA0` can point to different hardware devices, dependent on the Pi.
+`/dev/serial0` always points to the hardware pins.
+
 # Publishing to Pi
 
 ## Server
-`dotnet publish -r linux-arm --self-contained true`
+`dotnet publish`
 `rsync --progress -e "ssh -i ~/.ssh/chris-cartwright" Server/bin/Debug/net6.0/linux-arm/publish/* pi@shoppi.d.chris-cartwright.com:ShopPi`
 
 ## Client
