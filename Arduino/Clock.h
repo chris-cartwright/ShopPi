@@ -74,16 +74,8 @@ class Clock {
         _second++;
         if (_second >= 60) {
           _second = 0;
-          _minute++;
+          _readRtc();
           minuteChanged = true;
-          if (_minute >= 60) {
-            _minute = 0;
-            _hour++;
-            if (_hour >= 13) {
-              // Sync with the RTC every 12 hours
-              _readRtc();
-            }
-          }
         }
       }
 
