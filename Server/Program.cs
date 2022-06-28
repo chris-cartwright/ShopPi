@@ -26,6 +26,7 @@ Log.Information("Application starting...");
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog();
+builder.Services.AddHostedService<Manager>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(ApiKeyDefaults.AuthenticationScheme)

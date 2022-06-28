@@ -23,4 +23,8 @@
     <PackageReference Include="System.IO.Ports" Version="6.0.0" />
   </ItemGroup>
 
+   <ItemGroup>
+     <Content Include="Scripts\**" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

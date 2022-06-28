@@ -20,11 +20,11 @@ Summary: `/dev/ttyS0` and `/dev/AMA0` can point to different hardware devices, d
 
 ## Server
 `dotnet publish`
-`rsync --progress -e "ssh -i ~/.ssh/chris-cartwright" Server/bin/Debug/net6.0/linux-arm/publish/* pi@shoppi.d.chris-cartwright.com:ShopPi`
+`rsync --progress -r -e "ssh -i ~/.ssh/chris-cartwright" Server/bin/Debug/net6.0/linux-arm/publish/* pi@shoppi.d.chris-cartwright.com:ShopPi`
 
 ## Client
 `npm run build`
-`rsync --progress -e "ssh -i ~/.ssh/chris-cartwright" -r Client/public/* pi@shoppi.d.chris-cartwright.com:ShopPi/public`
+`rsync --progress -r -e "ssh -i ~/.ssh/chris-cartwright" -r Client/public/* pi@shoppi.d.chris-cartwright.com:ShopPi/public`
 
 # Debugging Chromium
 
