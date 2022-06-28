@@ -7,6 +7,12 @@
 
 //#define DEBUG
 
+/* Constants */
+
+// The type of this constant just needs to be big enough to hold it's value.
+// No effect on the mat00000000h.
+const uint8_t debounce = 50;
+
 /* Commands */
 const byte cmd_now = 0x01;
 const byte cmd_set_datetime = 0x02;
@@ -330,6 +336,13 @@ void handleCommand() {
 }
 
 byte readButtons() {
+  static unsigned long lastRead = 0;
+  static byte prevState = 0;
+
+  if(millis() - lastRead < debounce) {
+    return prevState;
+  }
+  
   byte ret = 0;
   for (int i = 0; i < 8; i++) {
     inputs = 1 << i;
