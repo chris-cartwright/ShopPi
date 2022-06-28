@@ -2,13 +2,30 @@ using AspNetCore.Authentication.ApiKey;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.FileProviders;
+using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Compact;
 using ShopPi;
 
 const string corsPolicyName = "CorsPolicy";
 
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .MinimumLevel.Debug()
+    .WriteTo.Seq("http://localhost:5341")
+    .MinimumLevel.Warning()
+    .WriteTo.File(new CompactJsonFormatter(), "server.log", rollingInterval: RollingInterval.Day)
+    .MinimumLevel.Debug()
+    .WriteTo.Console()
+    .CreateLogger();
+
+Log.Information("Application starting...");
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<Manager>();
+builder.Host.UseSerilog();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAuthorization();
@@ -36,13 +53,14 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+app.UseSerilogRequestLogging();
 
+var staticFiles = Path.Combine(builder.Environment.ContentRootPath, "public");
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "public")
-    )
+    FileProvider = new PhysicalFileProvider(staticFiles)
 });
+Log.Information("Serving static files from {StaticFilesPath}.", staticFiles);
 
 // This must come before `app.UseAuthorization()`.
 app.UseCors(corsPolicyName);
