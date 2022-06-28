@@ -16,7 +16,8 @@ public enum Commands : byte
     VerboseDisable,
     BootPi,
     Sync,
-    Ack
+    Ack,
+    ListenBinary
 }
 
 public record CommandInfo(
@@ -192,14 +193,14 @@ public class Program : IDisposable
     [Command(Commands.ReadLightSensor)]
     private Task ReadLightSensor(Commands command)
     {
-        Console.Write("Press enter to exit.");
+        Console.Write("Press escape to exit.");
         var last = DateTimeOffset.MinValue;
         while (true)
         {
             if (Console.KeyAvailable)
             {
                 var key = Console.ReadKey();
-                if (key.Key == ConsoleKey.Enter)
+                if (key.Key == ConsoleKey.Escape)
                 {
                     break;
                 }
@@ -253,6 +254,48 @@ public class Program : IDisposable
             else
             {
                 Console.WriteLine($"Received unknown: {(char)b}");
+            }
+        }
+        finally
+        {
+            _pauseReader = false;
+        }
+    }
+
+    [Command(Commands.ListenBinary)]
+    private async Task ListenBinary(Commands command)
+    {
+        _pauseReader = true;
+        try
+        {
+            Console.Write("Press escape to exit.");
+            var last = DateTimeOffset.Now;
+            while (true)
+            {
+                if (Console.KeyAvailable)
+                {
+                    var key = Console.ReadKey();
+                    if (key.Key == ConsoleKey.Escape)
+                    {
+                        break;
+                    }
+                }
+
+                if (_port.BytesToRead == 0)
+                {
+                    await Task.Delay(1);
+                    continue;
+                }
+
+                if (DateTimeOffset.Now - last >= TimeSpan.FromMilliseconds(250))
+                {
+                    Console.WriteLine();
+                }
+
+                byte b = (byte)_port.ReadByte();
+                Console.Write(b.ToString("X2"));
+
+                last = DateTimeOffset.Now;
             }
         }
         finally
