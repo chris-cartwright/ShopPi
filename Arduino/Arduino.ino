@@ -10,7 +10,7 @@
 /* Constants */
 
 // The type of this constant just needs to be big enough to hold it's value.
-// No effect on the mat00000000h.
+// No effect on the math.
 const uint8_t debounce = 50;
 
 /* Commands */
