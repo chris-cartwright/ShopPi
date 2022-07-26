@@ -180,7 +180,7 @@ void readAmbient() {
   int mapped = map(ambient, 500, 1024, 0, 255);
   brightness = constrain(mapped, 31, 255);
 
-  analogWrite(pin_button_brightness, brightness);
+  analogWrite(pin_button_brightness, map(brightness, 0, 255, 255, 0));
   setNotifLed();
 }
 
