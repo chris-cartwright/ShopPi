@@ -421,7 +421,7 @@ void setShiftRegisters() {
 
 void setNotifLed() {
   // Notification LED is bright. Constrained!
-  byte bright = map(brightness, 0, 255, 0, 127);
+  byte bright = map(brightness, 0, 255, 0, 16);
 
   // Map the colours.
   bright = map(bright, 0, 255, 255, 0);
