@@ -42,9 +42,9 @@ const byte pin_clock = 7;
 const byte pin_latch_outputs = 4;
 const byte pin_latch_inputs = 3;
 
-const byte pin_led_red = 6;
+const byte pin_led_red = 9;
 const byte pin_led_green = 5;
-const byte pin_led_blue = 9;
+const byte pin_led_blue = 6;
 
 /* Port mappings */
 const byte port_rpi_power = 0b00000001;
