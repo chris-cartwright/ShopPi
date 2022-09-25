@@ -16,15 +16,16 @@
     import Heart from "@svicons/open-iconic/heart.svelte";
 
     class State {
-        static readonly Empty = new State(false, "", "", "", null, null);
+        static readonly Empty = new State(false, null, "", null, "", "", null);
 
         public constructor(
             public readonly playing: boolean,
+            public readonly progressMs: number | null,
             public readonly songId: string | "",
+            public readonly durationMs: number | null,
             public readonly songTitle: string | "",
             public readonly songArtist: string | "",
-            public readonly isFavourite: boolean | null,
-            public readonly progressMs: number | null
+            public readonly isFavourite: boolean | null
         ) {}
     }
 
@@ -40,6 +41,8 @@
     let statusTimer: NodeJS.Timer | null = null;
     let disableCountdown: Readable<number> | null = null;
     let formattedDisabledCountdown: Readable<string> | null = null;
+    $: formattedProgress = formatMilliseconds($state.progressMs);
+    $: formattedDuration = formatMilliseconds($state.durationMs);
 
     user.subscribe(async (u) => {
         if (enabled) {
@@ -187,11 +190,12 @@
         state.set(
             new State(
                 currentState.playing,
+                currentState.progressMs,
                 currentState.songId,
+                currentState.durationMs,
                 currentState.songTitle,
                 currentState.songArtist,
-                favourite,
-                currentState.progressMs
+                favourite
             )
         );
     }
@@ -210,17 +214,36 @@
         state.set(
             new State(
                 json.is_playing,
+                json.progress_ms,
                 json.item.id,
+                json.item.duration_ms,
                 json.item.name,
                 json.item.artists.map((a) => a.name).join(", "),
-                currentState.isFavourite,
-                json.item.progress_ms
+                currentState.isFavourite
             )
         );
 
         if (currentState.songId != json.item.id) {
             updateFavourite();
         }
+    }
+
+    function formatMilliseconds(milliseconds: number): string {
+        let seconds = milliseconds / 1000;
+        let minutes = Math.floor(seconds / 60);
+        seconds -= minutes * 60;
+        seconds = Math.floor(seconds);
+
+        return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+    }
+
+    function toPercent(current: number, total: number): string {
+        let percent = current / total;
+        if(Number.isNaN(percent)) {
+            percent = 0;
+        }
+
+        return Math.floor(percent * 100) + '%';
     }
 </script>
 
@@ -319,13 +342,9 @@
                             {/if}
                         </div>
                     </div>
-                    <div class="col-1">
+                    <div class="col-4">
                         <div class="text-secondary">
-                            {#if enabled}
-                                {$state.progressMs}
-                            {:else}
-                                N/A
-                            {/if}
+                                {formattedProgress} / {formattedDuration} - {toPercent($state.progressMs, $state.durationMs)}
                         </div>
                     </div>
                 </div>
