@@ -16,14 +16,15 @@
     import Heart from "@svicons/open-iconic/heart.svelte";
 
     class State {
-        static readonly Empty = new State(false, "", "", "", null);
+        static readonly Empty = new State(false, "", "", "", null, null);
 
         public constructor(
             public readonly playing: boolean,
             public readonly songId: string | "",
             public readonly songTitle: string | "",
             public readonly songArtist: string | "",
-            public readonly isFavourite: boolean | null
+            public readonly isFavourite: boolean | null,
+            public readonly progressMs: number | null
         ) {}
     }
 
@@ -189,7 +190,8 @@
                 currentState.songId,
                 currentState.songTitle,
                 currentState.songArtist,
-                favourite
+                favourite,
+                currentState.progressMs
             )
         );
     }
@@ -211,7 +213,8 @@
                 json.item.id,
                 json.item.name,
                 json.item.artists.map((a) => a.name).join(", "),
-                currentState.isFavourite
+                currentState.isFavourite,
+                json.item.progress_ms
             )
         );
 
@@ -311,6 +314,15 @@
                         <div class="text-secondary">
                             {#if enabled}
                                 {$formattedDisabledCountdown}
+                            {:else}
+                                N/A
+                            {/if}
+                        </div>
+                    </div>
+                    <div class="col-1">
+                        <div class="text-secondary">
+                            {#if enabled}
+                                {$state.progressMs}
                             {:else}
                                 N/A
                             {/if}
