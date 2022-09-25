@@ -7,8 +7,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <RuntimeIdentifier>linux-arm</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>

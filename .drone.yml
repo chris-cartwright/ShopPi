@@ -7,7 +7,7 @@ steps:
   image: mcr.microsoft.com/dotnet/sdk:6.0
   commands:
   - cd Server
-  - dotnet publish
+  - dotnet publish -r linux-arm --self-contained
 
 - name: frontend
   image: node:16
