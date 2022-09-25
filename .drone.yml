@@ -1,0 +1,49 @@
+kind: pipeline
+type: docker
+name: default
+
+steps:
+- name: backend
+  image: mcr.microsoft.com/dotnet/sdk:6.0
+  commands:
+  - cd Server
+  - dotnet publish
+
+- name: frontend
+  image: node:16
+  commands:
+  - ls
+  - cd Client
+  - npm install
+  - npm run build
+
+- name: deploy
+  image: debian:11
+  depends_on:
+  - backend
+  - frontend
+  environment:
+    # ssh-keygen -t rsa
+    DRONE_SSH_PRIVATE:
+      from_secret: drone_ssh_private
+    # ssh-keyscan -t rsa shoppi.d.chris-cartwright.com
+    SHOPPI_HOST_KEY:
+      from_secret: shoppi.d_host_key
+  commands:
+  - apt-get update && apt-get install -y openssh-client
+  - eval $(ssh-agent -s)
+  - mkdir ~/.ssh && chmod 700 ~/.ssh
+  - echo "$DRONE_SSH_PRIVATE" | ssh-add -
+  - echo "$SHOPPI_HOST_KEY" >> ~/.ssh/known_hosts
+
+  - mkdir /drone/src/build
+  - cp -r Server/bin/Debug/net6.0/linux-arm/publish/* /drone/src/build
+  - mkdir /drone/src/build/public
+  - cp -r Client/public/* /drone/src/build/public
+  - tar -zcf build.tar.gz -C /drone/src/build .
+  - tar -tzf build.tar.gz
+  - scp build.tar.gz runner@shoppi.d.chris-cartwright.com:~/ShopPi/build.tar.gz
+  - ssh runner@shoppi.d.chris-cartwright.com "ShopPi/Scripts/stop.sh"
+  - ssh runner@shoppi.d.chris-cartwright.com "cd ShopPi && tar -zxf build.tar.gz"
+  - ssh runner@shoppi.d.chris-cartwright.com "chmod u+x ShopPi/Scripts/*.sh"
+  - ssh runner@shoppi.d.chris-cartwright.com "ShopPi/Scripts/start.sh"
