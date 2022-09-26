@@ -30,7 +30,7 @@ steps:
     SHOPPI_HOST_KEY:
       from_secret: shoppi.d_host_key
   commands:
-  - apt-get update && apt-get install -y openssh-client
+  - apt-get update && apt-get install -y openssh-client git
   - eval $(ssh-agent -s)
   - mkdir ~/.ssh && chmod 700 ~/.ssh
   - echo "$DRONE_SSH_PRIVATE" | ssh-add -
