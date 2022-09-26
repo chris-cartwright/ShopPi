@@ -41,7 +41,6 @@ steps:
   - mkdir /drone/src/build/public
   - cp -r Client/public/* /drone/src/build/public
   - tar -zcf build.tar.gz -C /drone/src/build .
-  - tar -tzf build.tar.gz
   - scp build.tar.gz runner@shoppi.d.chris-cartwright.com:~/ShopPi/build.tar.gz
   - ssh runner@shoppi.d.chris-cartwright.com "ShopPi/Scripts/stop.sh"
   - ssh runner@shoppi.d.chris-cartwright.com "cd ShopPi && tar -zxf build.tar.gz"
