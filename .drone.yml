@@ -43,9 +43,6 @@ steps:
   - git rev-parse HEAD > version.hash
   - tar -zcf build.tar.gz -C /drone/src/build .
   - scp build.tar.gz runner@shoppi.d.chris-cartwright.com:~/ShopPi/build.tar.gz
-  - ssh runner@shoppi.d.chris-cartwright.com "
-      ShopPi/Scripts/stop.sh
-      cd ShopPi && tar -zxf build.tar.gz
-      chmod u+x ShopPi/Scripts/*.sh
-      ShopPi/Scripts/start.sh
-    "
+  - ssh runner@shoppi.d.chris-cartwright.com "ShopPi/Scripts/stop.sh"
+  - ssh runner@shoppi.d.chris-cartwright.com "cd ShopPi && tar -zxf build.tar.gz"
+  - ssh runner@shoppi.d.chris-cartwright.com "chmod u+x ShopPi/Scripts/*.sh && ShopPi/Scripts/start.sh"
