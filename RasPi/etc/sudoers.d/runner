@@ -1,1 +1,1 @@
-runner ALL=(ALL) NOPASSWD: supervisorctl stop ShopPi, supervisorctl start ShopPi
+runner ALL=(ALL) NOPASSWD: supervisorctl stop ShopPi, supervisorctl start ShopPi, /usr/sbin/poweroff
