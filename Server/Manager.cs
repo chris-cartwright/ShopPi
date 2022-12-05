@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO.Ports;
 using Serilog;
+using ShopPi.Optional;
 
 namespace ShopPi
 {
@@ -8,6 +9,8 @@ namespace ShopPi
     {
         public enum Commands : byte
         {
+            Now = 0x01,
+            SetDatetime = 0x02,
             Ack = 0x0B,
             PowerOff = 0x0C,
             ScreenOn = 0x0D,
@@ -29,10 +32,87 @@ namespace ShopPi
             _openCheckTimer = new PeriodicTimer(TimeSpan.FromSeconds(10));
         }
 
-        public override Task StartAsync(CancellationToken cancellationToken)
+        public override async Task StartAsync(CancellationToken cancellationToken)
         {
             MaybeOpenPort();
-            return base.StartAsync(cancellationToken);
+            if(_port.IsOpen)
+            {
+                UpdateTime();
+            }
+
+            await base.StartAsync(cancellationToken);
+        }
+
+        public string? UpdateTime()
+        {
+            DateTimeOffset micro = default;
+            switch(GetTime())
+            {
+                case Result<DateTimeOffset, string>.Ok ok:
+                    micro = ok.Value;
+                    break;
+                
+                case Result<DateTimeOffset, string>.Error error:
+                    return error.Value;
+            }
+
+            var diff = micro - DateTimeOffset.Now;
+            if(diff.TotalMinutes < 1) {
+                return null;
+            }
+
+            _port.DataReceived -= DataReceived;
+            try
+            {
+                var now = DateTimeOffset.Now;
+                var send = new byte[] {
+                    (byte)Commands.SetDatetime,
+                    (byte)(now.Year - 2000),
+                    (byte)now.Month,
+                    (byte)now.Day,
+                    (byte)now.Hour,
+                    (byte)now.Minute,
+                    (byte)now.Second
+                };
+                _port.Write(send, 0, send.Length);
+
+                // Chew up newline added for clarity in interactive mode
+                _ = _port.ReadUntil('\n');
+
+                var recv = _port.ReadUntil('\n');
+                var set = _port.ReadUntil('\n');
+
+                logger
+                    .ForContext("recv", recv)
+                    .ForContext("set", set)
+                    .Debug("Time updated.");
+
+                return null;
+            }
+            finally
+            {
+                _port.DataReceived += DataReceived;
+            }
+        }
+
+        public Result<DateTimeOffset, string> GetTime()
+        {
+            _port.DataReceived -= DataReceived;
+            try
+            {
+                _port.Write(new[] { (byte)Commands.Now }, 0, 1);
+                var line = _port.ReadLine();
+                if(!DateTimeOffset.TryParse(line, out var micro))
+                {
+                    return new Result<DateTimeOffset, string>.Error(line);
+                }
+
+                return new Result<DateTimeOffset, string>.Ok(micro);
+            }
+            finally
+            {
+                _port.DataReceived += DataReceived;
+            }
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
