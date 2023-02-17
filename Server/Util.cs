@@ -61,5 +61,19 @@ namespace ShopPi
         {
             port.Write(bytes, 0, bytes.Length);
         }
+
+        public static string ReadUntil(this SerialPort port, char character)
+        {
+            var ret = new StringBuilder();
+            char ch = default;
+            do
+            {
+                ch = (char)port.ReadChar();
+                ret.Append(ch);
+            }
+            while(ch != character);
+
+            return ret.ToString();
+        }
     }
 }
