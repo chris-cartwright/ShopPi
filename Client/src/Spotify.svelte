@@ -14,6 +14,7 @@
     import MediaSkipBackward from "@svicons/open-iconic/media-skip-backward.svelte";
     import MediaSkipForward from "@svicons/open-iconic/media-skip-forward.svelte";
     import Heart from "@svicons/open-iconic/heart.svelte";
+    import Reload from "@svicons/open-iconic/reload.svelte";
 
     class State {
         static readonly Empty = new State(false, null, "", null, "", "", null);
@@ -29,7 +30,7 @@
         ) {}
     }
 
-    let enabled = false;
+    let enabled = false; // Pinging Spotify for current track info
     let user = writable<Users>("Chris");
     let authenticated = writable<boolean>(false);
     let authenticatedUnsub: Unsubscriber | null = null;
@@ -46,6 +47,7 @@
 
     user.subscribe(async (u) => {
         if (enabled) {
+            // Reset the GUI and force the user to click the Connect button.
             disable();
         }
 
@@ -234,16 +236,20 @@
         seconds -= minutes * 60;
         seconds = Math.floor(seconds);
 
-        return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+        return (
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(seconds).padStart(2, "0")
+        );
     }
 
     function toPercent(current: number, total: number): string {
         let percent = current / total;
-        if(Number.isNaN(percent)) {
+        if (Number.isNaN(percent)) {
             percent = 0;
         }
 
-        return Math.floor(percent * 100) + '%';
+        return Math.floor(percent * 100) + "%";
     }
 </script>
 
@@ -344,7 +350,10 @@
                     </div>
                     <div class="col-4">
                         <div class="text-secondary">
-                                {formattedProgress} / {formattedDuration} - {toPercent($state.progressMs, $state.durationMs)}
+                            {formattedProgress} / {formattedDuration} - {toPercent(
+                                $state.progressMs,
+                                $state.durationMs
+                            )}
                         </div>
                     </div>
                 </div>
@@ -365,6 +374,14 @@
                 No account information found. Please click
                 <a href="/" on:click|preventDefault={login}>here</a>
                 to log in.
+            </p>
+            <p>
+                <button
+                    class="btn btn-primary"
+                    on:click={() => window.location.reload()}
+                >
+                    <Reload width="1em" /> Reload
+                </button>
             </p>
         {/if}
     </div>
