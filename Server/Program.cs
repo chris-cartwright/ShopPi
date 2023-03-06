@@ -5,6 +5,8 @@ using Microsoft.Extensions.FileProviders;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
+using Serilog.Sinks.Graylog;
+using Serilog.Sinks.Graylog.Core.Transport;
 using ShopPi;
 
 const string corsPolicyName = "CorsPolicy";
@@ -14,7 +16,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .MinimumLevel.Debug()
-    .WriteTo.Seq("http://localhost:5341")
+    .WriteTo.Graylog("graylog.internal.chris-cartwright.com", 12201, TransportType.Udp)
     .MinimumLevel.Warning()
     .WriteTo.File(new CompactJsonFormatter(), "server.log", rollingInterval: RollingInterval.Day)
     .MinimumLevel.Debug()
