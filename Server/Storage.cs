@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
+using Serilog;
 
 namespace ShopPi
 {
@@ -7,6 +8,7 @@ namespace ShopPi
 
     public static class Storage
     {
+        private static readonly Serilog.ILogger Logger = Log.ForContext(typeof(Storage));
         private static JsonStorage? _storage;
 
         public static async Task AddStateAsync(Util.Users user, string state)
@@ -59,17 +61,20 @@ namespace ShopPi
         {
             if (_storage is not null)
             {
+                Logger.Debug("Storage already loaded.");
                 return;
             }
 
             if (!File.Exists("storage.json"))
             {
                 _storage = new();
+                Logger.Debug("Storage created.");
                 return;
             }
 
             await using var file = File.OpenRead("storage.json");
             _storage = await JsonSerializer.DeserializeAsync<JsonStorage>(file) ?? new();
+            Logger.Information("Storage loaded.");
         }
 
         private static async Task SaveStorageAsync()
@@ -85,6 +90,7 @@ namespace ShopPi
                     WriteIndented = true
                 }
             );
+            Logger.Information("Storage saved.");
         }
 
         private record StateInfo(DateTimeOffset Timestamp, Util.Users User, string State);
