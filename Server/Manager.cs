@@ -17,7 +17,7 @@ namespace ShopPi
             ScreenOff = 0x0E
         }
 
-        private readonly Serilog.ILogger logger = Log.ForContext<Manager>();
+        private readonly Serilog.ILogger _logger = Log.ForContext<Manager>();
         private readonly SerialPort _port;
         private readonly PeriodicTimer _openCheckTimer;
 
@@ -25,7 +25,7 @@ namespace ShopPi
 
         public Manager(IConfiguration config)
         {
-            logger.Debug("Created manager class.");
+            _logger.Debug("Created manager class.");
 
             _port = new SerialPort(config["Controller:Port"], int.Parse(config["Controller:Speed"]));
             _port.DataReceived += DataReceived;
@@ -82,7 +82,7 @@ namespace ShopPi
                 var recv = _port.ReadUntil('\n');
                 var set = _port.ReadUntil('\n');
 
-                logger
+                _logger
                     .ForContext("recv", recv)
                     .ForContext("set", set)
                     .Debug("Time updated.");
@@ -119,7 +119,7 @@ namespace ShopPi
         {
             while (await _openCheckTimer.WaitForNextTickAsync())
             {
-                logger.Debug("Checking port.");
+                _logger.Debug("Checking port.");
                 MaybeOpenPort();
             }
         }
@@ -135,18 +135,18 @@ namespace ShopPi
         {
             if (_port.IsOpen)
             {
-                logger.Debug("Port is open.");
+                _logger.Debug("Port is open.");
                 return;
             }
 
             try
             {
                 _port.Open();
-                logger.Debug("Port has been opened.");
+                _logger.Debug("Port has been opened.");
             }
             catch (Exception ex)
             {
-                logger
+                _logger
                     .ForContext("Exception", ex)
                     .Error("Could not connect to serial port {SerialPort}.", _port.PortName);
             }
@@ -157,14 +157,14 @@ namespace ShopPi
             while (_port.BytesToRead > 0)
             {
                 var raw = _port.ReadByte();
-                logger.Debug("Received command {Command}.", raw.ToString("X8"));
+                _logger.Debug("Received command {Command}.", raw.ToString("X8"));
                 try
                 {
                     HandleCommand((Commands)raw);
                 }
                 catch (Exception ex)
                 {
-                    logger
+                    _logger
                         .ForContext("Exception", ex)
                         .Error("Failed to process command.");
                 }
@@ -188,7 +188,7 @@ namespace ShopPi
                     var error = await proc.StandardError.ReadToEndAsync();
                     var output = await proc.StandardOutput.ReadToEndAsync();
 
-                    logger
+                    _logger
                         .ForContext("Script", script)
                         .ForContext("stderr", error)
                         .ForContext("stdout", output)
@@ -199,28 +199,28 @@ namespace ShopPi
             switch (cmd)
             {
                 case Commands.Ack:
-                    logger.Debug("Pong.");
+                    _logger.Debug("Pong.");
                     _port.WriteBytes((byte)Commands.Ack);
                     break;
 
                 case Commands.PowerOff:
-                    logger.Information("Power off.");
+                    _logger.Information("Power off.");
                     await StartAndWaitAsync("./Scripts/poweroff.sh");
                     break;
 
                 case Commands.ScreenOn:
-                    logger.Information("Screen on.");
+                    _logger.Information("Screen on.");
                     await StartAndWaitAsync("./Scripts/screen_on.sh");
                     break;
 
                 case Commands.ScreenOff:
-                    logger.Information("Screen off.");
+                    _logger.Information("Screen off.");
                     await StartAndWaitAsync("./Scripts/screen_off.sh");
                     break;
 
                 default:
                     // TODO: Something intelligent? No idea how to handle this right now.
-                    logger.Error("Unknown command received: {Command}.", ((byte)cmd).ToString("X8"));
+                    _logger.Error("Unknown command received: {Command}.", ((byte)cmd).ToString("X8"));
                     break;
             }
         }
