@@ -8,13 +8,7 @@
         writable,
     } from "svelte/store";
     import ky from "ky";
-    import Pulse from "@svicons/open-iconic/pulse.svelte";
-    import MediaPlay from "@svicons/open-iconic/media-play.svelte";
-    import MediaPause from "@svicons/open-iconic/media-pause.svelte";
-    import MediaSkipBackward from "@svicons/open-iconic/media-skip-backward.svelte";
-    import MediaSkipForward from "@svicons/open-iconic/media-skip-forward.svelte";
-    import Heart from "@svicons/open-iconic/heart.svelte";
-    import Reload from "@svicons/open-iconic/reload.svelte";
+    import Icon from "@iconify/svelte";
 
     class State {
         static readonly Empty = new State(false, null, "", null, "", "", null);
@@ -294,7 +288,7 @@
                             class:active={enabled}
                             on:click={toggleEnabled}
                         >
-                            <Pulse width="1em" />
+                            <Icon icon="majesticons:pulse" />
                         </button>
                     </div>
                     <div class="col-1">
@@ -304,9 +298,9 @@
                             disabled={!enabled}
                         >
                             {#if $playing}
-                                <MediaPause width="1em" />
+                                <Icon icon="material-symbols:pause-circle" />
                             {:else}
-                                <MediaPlay width="1em" />
+                                <Icon icon="material-symbols:play-circle" />
                             {/if}
                         </button>
                     </div>
@@ -316,7 +310,7 @@
                             on:click={previous}
                             disabled={!enabled}
                         >
-                            <MediaSkipBackward width="1em" />
+                            <Icon icon="material-symbols:skip-previous" />
                         </button>
                     </div>
                     <div class="col-1">
@@ -325,7 +319,7 @@
                             on:click={next}
                             disabled={!enabled}
                         >
-                            <MediaSkipForward width="1em" />
+                            <Icon icon="material-symbols:skip-next" />
                         </button>
                     </div>
                     <div class="col-1">
@@ -336,7 +330,7 @@
                             on:click={toggleFavourite}
                             disabled={!enabled}
                         >
-                            <Heart width="1em" />
+                            <Icon icon="material-symbols:favorite" />
                         </button>
                     </div>
                     <div class="col-1">
@@ -380,7 +374,7 @@
                     class="btn btn-primary"
                     on:click={() => window.location.reload()}
                 >
-                    <Reload width="1em" /> Reload
+                    <Icon icon="material-symbols:frame-reload" /> Reload
                 </button>
             </p>
         {/if}
