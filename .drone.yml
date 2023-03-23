@@ -42,6 +42,8 @@ steps:
   - git rev-parse HEAD > /drone/src/build/version.hash
   - tar -zcf build.tar.gz -C /drone/src/build .
   - scp build.tar.gz runner@shoppi.d.chris-cartwright.com:~/ShopPi/build.tar.gz
-  - ssh runner@shoppi.d.chris-cartwright.com "[ -x ShopPi/Scripts/stop.sh ] && ShopPi/Scripts/stop.sh"
+  # The `if` is intentional: an error from `stop.sh` should still kill the build.
+  # We do not want to error out if the script does not exist.
+  - ssh runner@shoppi.d.chris-cartwright.com "if [ -x ShopPi/Scripts/stop.sh ]; then ShopPi/Scripts/stop.sh; fi"
   - ssh runner@shoppi.d.chris-cartwright.com "cd ShopPi && tar -zxf build.tar.gz"
   - ssh runner@shoppi.d.chris-cartwright.com "chmod u+x ShopPi/Scripts/*.sh && ShopPi/Scripts/start.sh"
