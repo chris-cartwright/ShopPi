@@ -79,7 +79,11 @@ namespace ShopPi
 
         private static async Task SaveStorageAsync()
         {
-            File.Copy("storage.json", "storage.json.last", true);
+            if(File.Exists("storage.json"))
+            {
+                File.Copy("storage.json", "storage.json.last", true);
+            }
+
             // Truncate is important to prevent corruption in the event the current payload is smaller.
             await using var file = new FileStream("storage.json", FileMode.Truncate, FileAccess.Write, FileShare.None);
             await JsonSerializer.SerializeAsync(
