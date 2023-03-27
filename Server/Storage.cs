@@ -85,7 +85,8 @@ namespace ShopPi
             }
 
             // Truncate is important to prevent corruption in the event the current payload is smaller.
-            await using var file = new FileStream("storage.json", FileMode.Truncate, FileAccess.Write, FileShare.None);
+            // `FileMode.Create` includes the truncate.
+            await using var file = new FileStream("storage.json", FileMode.Create, FileAccess.Write, FileShare.None);
             await JsonSerializer.SerializeAsync(
                 file,
                 _storage,
