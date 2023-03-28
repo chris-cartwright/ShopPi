@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using AspNetCore.Authentication.ApiKey;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
@@ -171,4 +174,11 @@ app.MapDelete("/api/spotify/token", [Authorize] async (Util.Users user) =>
     await Storage.SetTokenAsync(user, null);
 });
 
-app.Run();
+app.Start();
+
+var server = app.Services.GetService<IServer>();
+var addressesFeature = server?.Features.Get<IServerAddressesFeature>();
+Debug.Assert(addressesFeature is not null);
+Log.Information("Listening on URLs: {Urls}", addressesFeature.Addresses);
+
+app.WaitForShutdown();
