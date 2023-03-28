@@ -1,3 +1,8 @@
+- name: Install packages
+  ansible.builtin.package:
+    name:
+      - acl # Needed for `become_user`
+
 - name: Get hostname
   shell: "raspi-config nonint get_hostname"
   register: pi_hostname
