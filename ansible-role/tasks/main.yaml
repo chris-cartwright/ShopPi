@@ -1,7 +1,5 @@
-- name: Assert vars have been set
-  ansible.builtin.assert:
-    that:
-      - wifi_bw_id 
+- name: Setup OS
+  ansible.builtin.import_tasks: os.yaml
 
 - ansible.builtin.group:
     name: "{{ runner_user }}"
@@ -27,10 +25,14 @@
     group: "{{ runner_user }}"
     mode: 0600
   notify: Restart application
+  become: true
+  become_user: "{{ runner_user }}"
 - name: Copy public key
   ansible.posix.authorized_key:
     user: "{{ runner_user }}"
     key: "{{ lookup('file', public_key) }}"
+  become: true
+  become_user: "{{ runner_user }}"
 - name: Install `supervisor`
   ansible.builtin.package:
     name: supervisor
@@ -59,6 +61,7 @@
     mode: 0600
     validate: 'visudo -cf %s'
   notify: Perform reboot
+  become: true
 - name: Check serial port enabled
   ansible.builtin.command: raspi-config nonint get_serial_hw
   register: serial_port_enabled
