@@ -11,12 +11,15 @@
     password: !
     append: true
   notify: Perform reboot
-- ansible.builtin.file:
+- name: Create application directory
+  ansible.builtin.file:
     path: "{{ runner_home_shoppi }}"
     owner: "{{ runner_user }}"
     group: "{{ runner_user }}"
-    mode: 0700
+    mode: 0755
     state: directory
+  become: true
+  become_user: "{{ runner_user }}"
 - name: Copy server config
   ansible.builtin.template:
     src: home/shoppi_runner/ShopPi/appsettings.Production.json.j2
@@ -69,6 +72,7 @@
   ansible.builtin.command: raspi-config nonint do_serial 2
   when: serial_port_enabled.rc == 1
   notify: Perform reboot
+  become: true
 - name: Set FullPageOS startup URL
   ansible.builtin.template:
     src: boot/fullpageos.txt.j2
@@ -77,3 +81,4 @@
     group: root
     mode: 0755
   notify: Perform reboot
+  become: true
