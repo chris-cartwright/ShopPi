@@ -1,0 +1,33 @@
+- name: Get hostname
+  shell: "raspi-config nonint get_hostname"
+  register: pi_hostname
+  changed_when: false
+- name: Set hostname
+  shell: "raspi-config nonint do_hostname {{ hostname }}"
+  when: pi_hostname.stdout != hostname
+  notify: Perform reboot
+
+- name: Copy WiFi config
+  ansible.builtin.template:
+    src: boot/fullpageos-wpa-supplicant.txt.j2
+    dest: /boot/fullpageos-wpa-supplicant.txt
+    owner: root
+    group: root
+    mode: 0755
+  notify: Perform reboot
+
+- name: Enable remote debugging in Chromium
+  ansible.builtin.template:
+    src: home/pi/scripts/start_chromium_browser.j2
+    dest: /home/pi/scripts/start_chromium_browser
+    owner: pi
+    group: pi
+    mode: 0755
+  notify: Perform reboot
+
+- name: Enable screen
+  ansible.builtin.replace:
+    path: /boot/config.txt
+    regexp: '^(dtoverlay.*)$'
+    replace: '#\1'
+  notify: Perform reboot

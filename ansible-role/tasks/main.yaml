@@ -1,0 +1,76 @@
+- name: Assert vars have been set
+  ansible.builtin.assert:
+    that:
+      - wifi_bw_id 
+
+- ansible.builtin.group:
+    name: "{{ runner_user }}"
+    state: present
+- name: Create user
+  ansible.builtin.user:
+    name: "{{ runner_user }}"
+    groups: "{{ runner_groups }}"
+    password: !
+    append: true
+  notify: Perform reboot
+- ansible.builtin.file:
+    path: "{{ runner_home_shoppi }}"
+    owner: "{{ runner_user }}"
+    group: "{{ runner_user }}"
+    mode: 0700
+    state: directory
+- name: Copy server config
+  ansible.builtin.template:
+    src: home/shoppi_runner/ShopPi/appsettings.Production.json.j2
+    dest: "{{ runner_home_shoppi }}/appsettings.Production.json"
+    owner: "{{ runner_user }}"
+    group: "{{ runner_user }}"
+    mode: 0600
+  notify: Restart application
+- name: Copy public key
+  ansible.posix.authorized_key:
+    user: "{{ runner_user }}"
+    key: "{{ lookup('file', public_key) }}"
+- name: Install `supervisor`
+  ansible.builtin.package:
+    name: supervisor
+- name: Create supervisor job
+  ansible.builtin.template:
+    src: etc/supervisor/conf.d/shoppi.conf.j2
+    dest: /etc/supervisor/conf.d/shoppi.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: Perform reboot
+- name: Create udev rule to allow anyone control over backlight
+  ansible.builtin.template:
+    src: etc/udev/rules.d/backlight-permissions.rules.j2
+    dest: /etc/udev/rules.d/backlight-permissions.rules
+    owner: root
+    group: root
+    mode: 0644
+  notify: Perform reboot
+- name: Allow `runner_user` to run the scripts as root
+  ansible.builtin.template:
+    src: etc/sudoers.d/runner.j2
+    dest: /etc/sudoers.d/runner
+    owner: root
+    group: root
+    mode: 0600
+    validate: 'visudo -cf %s'
+  notify: Perform reboot
+- name: Check serial port enabled
+  ansible.builtin.command: raspi-config nonint get_serial_hw
+  register: serial_port_enabled
+- name: Enable serial port
+  ansible.builtin.command: raspi-config nonint do_serial 2
+  when: serial_port_enabled.rc == 1
+  notify: Perform reboot
+- name: Set FullPageOS startup URL
+  ansible.builtin.template:
+    src: boot/fullpageos.txt.j2
+    dest: /boot/fullpageos.txt
+    owner: root
+    group: root
+    mode: 0755
+  notify: Perform reboot

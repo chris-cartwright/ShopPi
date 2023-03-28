@@ -1,0 +1,4 @@
+wifi: "{{ lookup('community.general.bitwarden', wifi_bw_id, search='id')[0] }}"
+wifi_ssid: "{{ wifi.login.username }}"
+wifi_password: "{{ wifi.login.password }}"
+runner_home_shoppi: "{{ runner_home }}/ShopPi"
