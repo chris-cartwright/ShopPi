@@ -18,19 +18,23 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
-    .MinimumLevel.Warning()
     .WriteTo.Graylog("graylog.internal.chris-cartwright.com", 12201, TransportType.Udp)
-    .MinimumLevel.Warning()
-    .WriteTo.File(new CompactJsonFormatter(), "server.log", rollingInterval: RollingInterval.Day)
-    .MinimumLevel.Debug()
+    .WriteTo.File(new CompactJsonFormatter(), "server.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
     .WriteTo.Console()
-    .CreateLogger();
+	.MinimumLevel.Debug()
+    .CreateBootstrapLogger();
 
 Log.Information("Application starting...");
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog();
+builder.Host.UseSerilog((context, services, loggerConfig) =>
+{
+	loggerConfig
+		.ReadFrom.Configuration(context.Configuration)
+		.ReadFrom.Services(services)
+		.Enrich.FromLogContext();
+});
 builder.Services.AddHostedService<Manager>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddAuthorization();
