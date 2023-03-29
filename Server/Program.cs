@@ -14,6 +14,7 @@ using ShopPi;
 
 const string corsPolicyName = "CorsPolicy";
 
+Serilog.Debugging.SelfLog.Enable(Console.Error);
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
