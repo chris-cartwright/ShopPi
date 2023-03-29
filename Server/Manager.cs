@@ -21,7 +21,10 @@ namespace ShopPi
         private readonly SerialPort _port;
         private readonly PeriodicTimer _openCheckTimer;
 
-        public bool IsConnected => _port.IsOpen;
+        // Automatically update time once per run of application
+		private bool _timeUpdated;
+
+		public bool IsConnected => _port.IsOpen;
 
         public Manager(IConfiguration config)
         {
@@ -35,11 +38,6 @@ namespace ShopPi
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
             MaybeOpenPort();
-            if(_port.IsOpen)
-            {
-                UpdateTime();
-            }
-
             await base.StartAsync(cancellationToken);
         }
 
@@ -57,7 +55,8 @@ namespace ShopPi
             }
 
             var diff = micro - DateTimeOffset.Now;
-            if(diff.TotalMinutes < 1) {
+            // `diff` can be negative.
+            if(Math.Abs(diff.TotalMinutes) < 1) {
                 return null;
             }
 
@@ -117,10 +116,14 @@ namespace ShopPi
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            while (await _openCheckTimer.WaitForNextTickAsync())
+            while (await _openCheckTimer.WaitForNextTickAsync(stoppingToken))
             {
                 _logger.Debug("Checking port.");
-                MaybeOpenPort();
+                if (MaybeOpenPort() && !_timeUpdated)
+                {
+	                UpdateTime();
+                    _timeUpdated = true;
+                }
             }
         }
 
@@ -131,18 +134,19 @@ namespace ShopPi
             _openCheckTimer.Dispose();
         }
 
-        private void MaybeOpenPort()
+        private bool MaybeOpenPort()
         {
             if (_port.IsOpen)
             {
                 _logger.Debug("Port is open.");
-                return;
+                return true;
             }
 
             try
             {
                 _port.Open();
                 _logger.Debug("Port has been opened.");
+                return true;
             }
             catch (Exception ex)
             {
@@ -150,6 +154,8 @@ namespace ShopPi
                     .ForContext("Exception", ex)
                     .Error("Could not connect to serial port {SerialPort}.", _port.PortName);
             }
+
+            return false;
         }
 
         private void DataReceived(object sender, SerialDataReceivedEventArgs e)
