@@ -1,16 +1,6 @@
 - name: Setup OS
   ansible.builtin.import_tasks: os.yaml
 
-- ansible.builtin.group:
-    name: "{{ runner_user }}"
-    state: present
-- name: Create user
-  ansible.builtin.user:
-    name: "{{ runner_user }}"
-    groups: "{{ runner_groups }}"
-    password: !
-    append: true
-  notify: Perform reboot
 - name: Create application directory
   ansible.builtin.file:
     path: "{{ runner_home_shoppi }}"
@@ -39,6 +29,7 @@
 - name: Install `supervisor`
   ansible.builtin.package:
     name: supervisor
+  become: true
 - name: Create supervisor job
   ansible.builtin.template:
     src: etc/supervisor/conf.d/shoppi.conf.j2
@@ -46,39 +37,5 @@
     owner: root
     group: root
     mode: 0644
-  notify: Perform reboot
-- name: Create udev rule to allow anyone control over backlight
-  ansible.builtin.template:
-    src: etc/udev/rules.d/backlight-permissions.rules.j2
-    dest: /etc/udev/rules.d/backlight-permissions.rules
-    owner: root
-    group: root
-    mode: 0644
-  notify: Perform reboot
-- name: Allow `runner_user` to run the scripts as root
-  ansible.builtin.template:
-    src: etc/sudoers.d/runner.j2
-    dest: /etc/sudoers.d/runner
-    owner: root
-    group: root
-    mode: 0600
-    validate: 'visudo -cf %s'
-  notify: Perform reboot
-  become: true
-- name: Check serial port enabled
-  ansible.builtin.command: raspi-config nonint get_serial_hw
-  register: serial_port_enabled
-- name: Enable serial port
-  ansible.builtin.command: raspi-config nonint do_serial 2
-  when: serial_port_enabled.rc == 1
-  notify: Perform reboot
-  become: true
-- name: Set FullPageOS startup URL
-  ansible.builtin.template:
-    src: boot/fullpageos.txt.j2
-    dest: /boot/fullpageos.txt
-    owner: root
-    group: root
-    mode: 0755
   notify: Perform reboot
   become: true

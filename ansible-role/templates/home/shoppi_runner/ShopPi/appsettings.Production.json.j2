@@ -1,4 +1,10 @@
 {
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
   "ApiKey": "{{ api_key }}",
   "Spotify": {
     "ClientId": "{{ spotify_client_id }}",
@@ -6,14 +12,5 @@
   },
   "Controller": {
     "Port": "/dev/serial0"
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "Serilog": {
-    "MinimumLevel": "Warning"
   }
 }

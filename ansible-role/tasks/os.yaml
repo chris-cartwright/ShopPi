@@ -1,34 +1,71 @@
+- name: Update and upgrade
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: true
+  become: true
 - name: Install packages
-  ansible.builtin.package:
+  ansible.builtin.apt:
     name:
       - acl # Needed for `become_user`
+      - xserver-xorg
+      - xinit
+      - x11-xserver-utils
+      - chromium-browser
+      - matchbox-window-manager
+      - xautomation
+      - unclutter
+    install_recommends: false
+  become: true
 
-- name: Get hostname
-  shell: "raspi-config nonint get_hostname"
-  register: pi_hostname
-  changed_when: false
 - name: Set hostname
-  shell: "raspi-config nonint do_hostname {{ hostname }}"
-  when: pi_hostname.stdout != hostname
+  ansible.builtin.shell: "raspi-config nonint do_hostname {{ hostname }}"
+  when: ansible_hostname != hostname
   notify: Perform reboot
 
-- name: Copy WiFi config
+- name: Create group
+  ansible.builtin.group:
+    name: "{{ runner_user }}"
+    state: present
+  become: true
+- name: Create user
+  ansible.builtin.user:
+    name: "{{ runner_user }}"
+    groups: "{{ runner_groups }}"
+    password: !
+    append: true
+  become: true
+
+- name: Copy startup script
   ansible.builtin.template:
-    src: boot/fullpageos-wpa-supplicant.txt.j2
-    dest: /boot/fullpageos-wpa-supplicant.txt
+    src: home/shoppi_runner/kiosk.sh.j2
+    dest: "{{ runner_home }}/kiosk.sh"
+    owner: "{{ runner_user }}"
+    group: "{{ runner_user }}"
+    mode: 0755
+  become: true
+  notify: Perform reboot
+- name: Run startup script on login
+  ansible.builtin.lineinfile:
+    path: "{{ runner_home }}/.bashrc"
+    line: "xinit {{ runner_home }}/kiosk.sh -- vt$(fgconsole)"
+    owner: "{{ runner_user }}"
+    group: "{{ runner_user }}"
+    mode: 0755
+  notify: Perform reboot
+  become: true
+- name: Enable multi-user target
+  ansible.builtin.shell: "systemctl --quiet set-default multi-user.target"
+  become: true
+- name: Create systemd autologin
+  ansible.builtin.blockinfile:
+    path: /etc/systemd/system/getty@tty1.service.d/autologin.conf
     owner: root
     group: root
-    mode: 0755
-  notify: Perform reboot
-
-- name: Enable remote debugging in Chromium
-  ansible.builtin.template:
-    src: home/pi/scripts/start_chromium_browser.j2
-    dest: /home/pi/scripts/start_chromium_browser
-    owner: pi
-    group: pi
-    mode: 0755
-  notify: Perform reboot
+    block: |
+      [Service]
+      ExecStart=
+      ExecStart=-/sbin/agetty --autologin {{ runner_user }} --noclear %I \$TERM
+  become: true
 
 - name: Enable screen
   ansible.builtin.replace:
@@ -36,3 +73,44 @@
     regexp: '^(dtoverlay.*)$'
     replace: '#\1'
   notify: Perform reboot
+  become: true
+
+- name: Create udev rule to allow anyone control over backlight
+  ansible.builtin.template:
+    src: etc/udev/rules.d/backlight-permissions.rules.j2
+    dest: /etc/udev/rules.d/backlight-permissions.rules
+    owner: root
+    group: root
+    mode: 0644
+  become: true
+  notify: Perform reboot
+  
+- name: Allow `runner_user` to run the scripts as root
+  ansible.builtin.template:
+    src: etc/sudoers.d/runner.j2
+    dest: /etc/sudoers.d/runner
+    owner: root
+    group: root
+    mode: 0600
+    validate: 'visudo -cf %s'
+  notify: Perform reboot
+  become: true
+
+- name: Enable serial port
+  become: true
+  community.general.ini_file:
+    path: /boot/config.txt
+    section: all
+    option: enable_uart
+    value: 1
+
+# Below doesn't seem to work. `/dev/serial0` is missing.
+# `enable_uart=1` is in the wrong section in `/boot/config.txt`
+# - name: Check serial port enabled
+#   ansible.builtin.command: raspi-config nonint get_serial_hw
+#   register: serial_port_enabled
+# - name: Enable serial port
+#   ansible.builtin.command: raspi-config nonint do_serial 2
+#   when: serial_port_enabled.rc == 1
+#   notify: Perform reboot
+#   become: true
