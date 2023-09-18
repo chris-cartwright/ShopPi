@@ -64,7 +64,7 @@ namespace ShopPi
             try
             {
                 var now = DateTimeOffset.Now;
-                var send = new byte[] {
+                var send = new[] {
                     (byte)Commands.SetDatetime,
                     (byte)(now.Year - 2000),
                     (byte)now.Month,
@@ -82,8 +82,8 @@ namespace ShopPi
                 var set = _port.ReadUntil('\n');
 
                 _logger
-                    .ForContext("recv", recv)
-                    .ForContext("set", set)
+                    .ForContext(nameof(recv), recv)
+                    .ForContext(nameof(set), set)
                     .Debug("Time updated.");
 
                 return null;

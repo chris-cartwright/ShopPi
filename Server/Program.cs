@@ -8,13 +8,10 @@ using Microsoft.Extensions.FileProviders;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
-using Serilog.Sinks.Graylog;
-using Serilog.Sinks.Graylog.Core.Transport;
 using ShopPi;
 
 const string corsPolicyName = "CorsPolicy";
 
-Serilog.Debugging.SelfLog.Enable(Console.Error);
 Log.Logger = new LoggerConfiguration()
 	.MinimumLevel.Override("Microsoft", LogEventLevel.Information)
 	.MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
