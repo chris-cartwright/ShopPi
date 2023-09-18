@@ -103,14 +103,3 @@
     section: all
     option: enable_uart
     value: 1
-
-# Below doesn't seem to work. `/dev/serial0` is missing.
-# `enable_uart=1` is in the wrong section in `/boot/config.txt`
-# - name: Check serial port enabled
-#   ansible.builtin.command: raspi-config nonint get_serial_hw
-#   register: serial_port_enabled
-# - name: Enable serial port
-#   ansible.builtin.command: raspi-config nonint do_serial 2
-#   when: serial_port_enabled.rc == 1
-#   notify: Perform reboot
-#   become: true
