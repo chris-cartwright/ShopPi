@@ -42,3 +42,9 @@ There is a way to do it with `tee` as well, can't remember exactly.
 ```bash
 sudo bash -c "echo 1 > /sys/class/backlight/rpi_backlight/bl_power"
 ```
+
+# Perform a local build
+
+```sh
+drone exec --secret-file=.secrets.env
+```

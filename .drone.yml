@@ -28,22 +28,23 @@ steps:
     # ssh-keyscan -t rsa shoppi.d.chris-cartwright.com
     SHOPPI_HOST_KEY:
       from_secret: shoppi.d_host_key
+    HOST: shoppi.d.chris-cartwright.com
   commands:
-  - apt-get update && apt-get install -y openssh-client git
+  - apt-get update && apt-get install -y --no-install-recommends openssh-client ca-certificates git
   - eval $(ssh-agent -s)
   - mkdir ~/.ssh && chmod 700 ~/.ssh
   - echo "$DRONE_SSH_PRIVATE" | ssh-add -
   - echo "$SHOPPI_HOST_KEY" >> ~/.ssh/known_hosts
 
-  - mkdir /drone/src/build
+  - mkdir -p /drone/src/build
   - cp -r Server/bin/Debug/net6.0/linux-arm/publish/* /drone/src/build
-  - mkdir /drone/src/build/public
+  - mkdir -p /drone/src/build/public
   - cp -r Client/public/* /drone/src/build/public
   - git rev-parse HEAD > /drone/src/build/version.hash
   - tar -zcf build.tar.gz -C /drone/src/build .
-  - scp build.tar.gz shoppi@shoppi.d.chris-cartwright.com:~/ShopPi/build.tar.gz
+  - scp build.tar.gz shoppi@"$HOST":~/ShopPi/build.tar.gz
   # The `if` is intentional: an error from `stop.sh` should still kill the build.
   # We do not want to error out if the script does not exist.
-  - ssh shoppi@shoppi.d.chris-cartwright.com "if [ -x ShopPi/Scripts/stop.sh ]; then ShopPi/Scripts/stop.sh; fi"
-  - ssh shoppi@shoppi.d.chris-cartwright.com "cd ShopPi && tar -zxf build.tar.gz"
-  - ssh shoppi@shoppi.d.chris-cartwright.com "chmod u+x ShopPi/Scripts/*.sh && ShopPi/Scripts/start.sh"
+  - ssh shoppi@"$HOST" "if [ -x ShopPi/Scripts/stop.sh ]; then ShopPi/Scripts/stop.sh; fi"
+  - ssh shoppi@"$HOST" "cd ShopPi && tar -zxf build.tar.gz"
+  - ssh shoppi@"$HOST" "chmod u+x ShopPi/Scripts/*.sh && dos2unix -q ShopPi/Scripts/* && ShopPi/Scripts/start.sh"
