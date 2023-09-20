@@ -1,14 +1,3 @@
-# Enable UART on pins
-
-```
-sudo raspi-config
-```
-
-- 3 - Interface options
-- P6 - Serial port
-
-Disable the shell and enable the hardware.
-
 # Use `/dev/serial0`
 
 https://www.raspberrypi.com/documentation/computers/configuration.html#configuring-uarts
@@ -18,17 +7,25 @@ Summary: `/dev/ttyS0` and `/dev/AMA0` can point to different hardware devices, d
 
 # Publishing to Pi
 
-## Server
+## Manual
+
+### Server
 `dotnet publish`
 `rsync --progress -r -e "ssh -i ~/.ssh/chris-cartwright" Server/bin/Debug/net6.0/linux-arm/publish/* pi@shoppi.d.chris-cartwright.com:ShopPi`
 
-## Client
+### Client
 `npm run build`
 `rsync --progress -r -e "ssh -i ~/.ssh/chris-cartwright" -r Client/public/* pi@shoppi.d.chris-cartwright.com:ShopPi/public`
 
-# Debugging Chromium
+## Perform a local build
 
-Add `--remote-debugging-port=9222` to `/etc/chromium-browser/customizations/00-rpi-vars`.
+Requires installing `drone-cli`.
+
+```sh
+drone exec --secret-file=.secrets.env
+```
+
+# Debugging Chromium
 
 Open tunnel from RPi: `ssh -i ~/.ssh/chris-cartwright -L 9222:localhost:9222 pi@shoppi.d.chris-cartwright.com`
 
@@ -41,10 +38,4 @@ There is a way to do it with `tee` as well, can't remember exactly.
 
 ```bash
 sudo bash -c "echo 1 > /sys/class/backlight/rpi_backlight/bl_power"
-```
-
-# Perform a local build
-
-```sh
-drone exec --secret-file=.secrets.env
 ```
