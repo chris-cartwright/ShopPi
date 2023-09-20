@@ -1,11 +1,14 @@
-﻿using System.Diagnostics;
-using System.IO.Ports;
+﻿using System.IO.Ports;
 using System.Text;
+using Serilog;
+using ILogger = Serilog.ILogger;
 
 namespace ShopPi
 {
     public static class Util
     {
+	    private static readonly ILogger Logger = Log.ForContext(typeof(Util));
+
         public enum Users
         {
             Chris,
@@ -42,7 +45,9 @@ namespace ShopPi
             if (!response.IsSuccessStatusCode)
             {
                 await Storage.SetTokenAsync(user, null);
-                Debug.Write(await response.Content.ReadAsStringAsync());
+                Logger
+	                .ForContext("Response", await response.Content.ReadAsStringAsync())
+	                .Information("Could not get OAuth token from Spotify.");
                 return null;
             }
 
