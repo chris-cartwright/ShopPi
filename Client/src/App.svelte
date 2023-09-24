@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { General } from "./api";
 	import Spotify from "./Spotify.svelte";
+	import Timers from "./Timers.svelte";
 	import { random } from "./util";
 	import {
 		SvelteToast,
@@ -48,6 +49,11 @@
 	{:else}
 		<Spotify />
 	{/if}
+
+	<div class="row">
+		<div class="col-5"><Timers /></div>
+		<div class="col">TODO</div>
+	</div>
 	<SvelteToast options={toastOpts} />
 </main>
 
