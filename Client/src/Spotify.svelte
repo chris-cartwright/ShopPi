@@ -374,7 +374,7 @@
                     class="btn btn-primary"
                     on:click={() => window.location.reload()}
                 >
-                    <Icon icon="material-symbols:frame-reload" /> Reload
+                    <Icon icon="ion:reload" /> Reload
                 </button>
             </p>
         {/if}
