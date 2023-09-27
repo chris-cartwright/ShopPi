@@ -206,7 +206,7 @@
         </div>
         <div class="col">
             <button class="btn btn-primary" on:click={addNew}>
-                <Icon icon="material-symbols:add-circle-outline-rounded" /> Add Timer
+                <Icon icon="material-symbols:add-circle-outline-rounded" /> Add
             </button>
         </div>
     </div>

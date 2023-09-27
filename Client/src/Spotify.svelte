@@ -360,6 +360,9 @@
                 <div class="row">
                     {#if $state.playing}
                         {$state.songTitle} - {$state.songArtist}
+                    {:else}
+                        <!-- Keep the vertical space -->
+                        &nbsp;
                     {/if}
                 </div>
             </div>
