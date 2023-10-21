@@ -1,8 +1,12 @@
 <script lang="ts">
-	import { General } from "./api";
+    import { onMount } from "svelte";
+	import { General, configureTokens } from "./api";
 	import Spotify from "./Spotify.svelte";
+	import { user } from "./stores/user";
 	import Timers from "./Timers.svelte";
-	import { random } from "./util";
+	import ToDo from "./ToDo.svelte";
+	import TokenManager from "./TokenManager.svelte";
+	import { Integrations, random } from "./util";
 	import {
 		SvelteToast,
 		SvelteToastOptions,
@@ -30,9 +34,41 @@
 			});
 		}
 	}
+
+	onMount(async() => {
+		configureTokens();
+	});
 </script>
 
 <main>
+	<div class="row">
+		<div class="btn-group">
+			<input
+				type="radio"
+				class="btn-check"
+				name="user"
+				bind:group={$user}
+				value="Chris"
+				id="chris"
+				autocomplete="off"
+				checked
+			/>
+			<label class="btn btn-outline-primary" for="chris"> Chris </label>
+
+			<input
+				type="radio"
+				class="btn-check"
+				name="user"
+				bind:group={$user}
+				value="Courtney"
+				id="courtney"
+				autocomplete="off"
+			/>
+			<label class="btn btn-outline-primary" for="courtney">
+				Courtney
+			</label>
+		</div>
+	</div>
 	{#if !hasApiKey}
 		<div class="alert alert-warning" role="alert">
 			<p>Missing API key!</p>
@@ -47,12 +83,23 @@
 			</div>
 		</div>
 	{:else}
-		<Spotify />
+		<TokenManager integration={Integrations.Spotify}>
+			<Spotify />
+		</TokenManager>
 	{/if}
 
 	<div class="row">
 		<div class="col-5"><Timers /></div>
-		<div class="col">TODO</div>
+		<div class="col">
+			{#if !hasApiKey}
+				<!-- API key management is handled in the Spotify section above -->
+				&nbsp;
+			{:else}
+				<TokenManager integration={Integrations.ToDo}>
+					<ToDo />
+				</TokenManager>
+			{/if}
+		</div>
 	</div>
 	<SvelteToast options={toastOpts} />
 </main>

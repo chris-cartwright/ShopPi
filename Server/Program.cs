@@ -3,6 +3,7 @@ using AspNetCore.Authentication.ApiKey;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
@@ -58,6 +59,7 @@ builder.Services.AddCors(options =>
 		}
 	);
 });
+builder.Services.AddSingleton<LocalEnvironment>();
 
 Log.Information("Building application...");
 var app = builder.Build();
@@ -80,9 +82,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 // -- End
 
+var todoLogger = Log.Logger.ForContext("SourceContext", nameof(Util.Integrations.ToDo));
+
 app.MapGet("/api/echo", [Authorize] (string msg) => Results.Ok($"Echo: {msg}"));
 
-app.MapGet("/api/spotify/authorize", [Authorize] async (Util.Users user, IConfiguration config) =>
+app.MapGet("/api/spotify/authorize", [Authorize] async (Util.Users user, LocalEnvironment env) =>
 {
 	var state = Util.RandomString(14);
 	await Storage.AddStateAsync(user, state);
@@ -99,15 +103,15 @@ app.MapGet("/api/spotify/authorize", [Authorize] async (Util.Users user, IConfig
 	var qs = new Dictionary<string, string?>
 	{
 		["response_type"] = "code",
-		["client_id"] = config["Spotify:ClientId"],
+		["client_id"] = env.Config["Spotify:ClientId"],
 		["scope"] = string.Join(" ", scopes),
-		["redirect_uri"] = config["RedirectUri"],
+		["redirect_uri"] = env.SpotifyCallback + "/",
 		["state"] = state
 	};
 	return Results.Ok(QueryHelpers.AddQueryString("https://accounts.spotify.com/authorize", qs));
 });
 
-app.MapGet("/api/spotify/callback", async (string state, string code, IConfiguration config) =>
+app.MapGet("/api/spotify/callback", async (string state, string code, LocalEnvironment env) =>
 {
 	var user = await Storage.GetUserForStateAsync(state);
 	if (user is null)
@@ -118,28 +122,28 @@ app.MapGet("/api/spotify/callback", async (string state, string code, IConfigura
 	var form = new Dictionary<string, string>
 	{
 		["code"] = code,
-		["redirect_uri"] = config["RedirectUri"],
+		["redirect_uri"] = env.SpotifyCallback + "/",
 		["grant_type"] = "authorization_code"
 	};
 
-	var rawToken = await Util.GetTokenAsync(user.Value, config, form);
+	var rawToken = await Util.GetSpotifyTokenAsync(user.Value, env.Config, form);
 	if (rawToken is null)
 	{
 		return Results.Redirect("/?error=Failed to obtain access token.");
 	}
 
-	var token = new SpotifyToken(
+	var token = new OAuthToken(
 		rawToken.Access,
 		rawToken.Refresh!,
 		rawToken.Expires
 	);
-	await Storage.SetTokenAsync(user.Value, token);
+	await Storage.SetTokenAsync(user.Value, Util.Integrations.Spotify, token);
 	return Results.Redirect("/");
 });
 
 app.MapGet("/api/spotify/token", [Authorize] async (Util.Users user, IConfiguration config) =>
 {
-	var token = await Storage.GetTokenAsync(user);
+	var token = await Storage.GetTokenAsync(user, Util.Integrations.Spotify);
 	if (token is null)
 	{
 		return Results.NotFound();
@@ -156,25 +160,131 @@ app.MapGet("/api/spotify/token", [Authorize] async (Util.Users user, IConfigurat
 		["grant_type"] = "refresh_token"
 	};
 
-	var rawToken = await Util.GetTokenAsync(user, config, form);
+	var rawToken = await Util.GetSpotifyTokenAsync(user, config, form);
 	if (rawToken is null)
 	{
-		await Storage.SetTokenAsync(user, null);
+		await Storage.SetTokenAsync(user, Util.Integrations.Spotify, null);
 		return Results.NotFound();
 	}
 
-	token = new SpotifyToken(
+	token = new OAuthToken(
 		rawToken.Access,
 		rawToken.Refresh ?? token.Refresh,
 		rawToken.Expires
 	);
-	await Storage.SetTokenAsync(user, token);
+	await Storage.SetTokenAsync(user, Util.Integrations.Spotify, token);
 	return Results.Ok(token.Access);
 });
 
 app.MapDelete("/api/spotify/token", [Authorize] async (Util.Users user) =>
 {
-	await Storage.SetTokenAsync(user, null);
+	await Storage.SetTokenAsync(user, Util.Integrations.Spotify, null);
+});
+
+app.MapGet("/api/todo/authorize", [Authorize] async (Util.Users user, LocalEnvironment env) =>
+{
+	var state = Util.RandomString(14);
+	await Storage.AddStateAsync(user, state);
+
+	var scopes = new[]
+	{
+		"https://graph.microsoft.com/Tasks.Read",
+		"https://graph.microsoft.com/Tasks.ReadWrite"
+	};
+
+	var qs = new Dictionary<string, string?>
+	{
+		["response_type"] = "code",
+		["response_mode"] = "query",
+		["client_id"] = env.Config["ToDo:ClientId"],
+		["scope"] = string.Join(" ", scopes),
+		["redirect_uri"] = env.ToDoCallback.ToString(),
+		["state"] = state
+	};
+	return Results.Ok(QueryHelpers.AddQueryString(
+		"https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize",
+		qs
+	));
+});
+
+app.MapGet("/api/todo/callback", async (string state, string? code, string? error, [FromQuery(Name = "error_description")] string? errorDescription, LocalEnvironment env) =>
+{
+	var user = await Storage.GetUserForStateAsync(state);
+	if (user is null)
+	{
+		return Results.Redirect("/?error=Invalid state returned.");
+	}
+
+	if (code is null)
+	{
+		if (error is null)
+		{
+			todoLogger
+				.ForContext(nameof(state), state)
+				.ForContext(nameof(error), error)
+				.ForContext(nameof(errorDescription), errorDescription)
+				.Error("Unknown response received from OAuth server.");
+			return Results.Redirect("/?error=Invalid response.");
+		}
+
+		return Results.Redirect($"/?error={errorDescription}");
+	}
+
+	var form = new Dictionary<string, string>
+	{
+		["code"] = code,
+		["redirect_uri"] = env.ToDoCallback.ToString(),
+		["grant_type"] = "authorization_code"
+	};
+
+	var rawToken = await Util.GetToDoTokenAsync(user.Value, env.Config, form);
+	if (rawToken is null)
+	{
+		return Results.Redirect("/?error=Failed to obtain access token.");
+	}
+
+	var token = new OAuthToken(
+		rawToken.Access,
+		rawToken.Refresh!,
+		rawToken.Expires
+	);
+	await Storage.SetTokenAsync(user.Value, Util.Integrations.ToDo, token);
+	return Results.Redirect("/");
+});
+
+app.MapGet("/api/todo/token", [Authorize] async (Util.Users user, IConfiguration config) =>
+{
+	var token = await Storage.GetTokenAsync(user, Util.Integrations.ToDo);
+	if (token is null)
+	{
+		return Results.NotFound();
+	}
+
+	if (token.Expires > DateTimeOffset.Now)
+	{
+		return Results.Ok(token.Access);
+	}
+
+	var form = new Dictionary<string, string>
+	{
+		["refresh_token"] = token.Refresh,
+		["grant_type"] = "refresh_token"
+	};
+
+	var rawToken = await Util.GetToDoTokenAsync(user, config, form);
+	if (rawToken is null)
+	{
+		await Storage.SetTokenAsync(user, Util.Integrations.Spotify, null);
+		return Results.NotFound();
+	}
+
+	token = new OAuthToken(
+		rawToken.Access,
+		rawToken.Refresh ?? token.Refresh,
+		rawToken.Expires
+	);
+	await Storage.SetTokenAsync(user, Util.Integrations.Spotify, token);
+	return Results.Ok(token.Access);
 });
 
 try
