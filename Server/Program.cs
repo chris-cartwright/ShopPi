@@ -54,8 +54,10 @@ builder.Services.AddCors(options =>
 				"http://localhost:4000"
 			);
 			config.WithHeaders(
-				"X-Api-Key"
+				"X-Api-Key",
+				"Content-Type"
 			);
+			config.WithMethods("GET", "PUT", "DELETE");
 		}
 	);
 });
@@ -86,6 +88,12 @@ var todoLogger = Log.Logger.ForContext("SourceContext", nameof(Util.Integrations
 
 app.MapGet("/api/echo", [Authorize] (string msg) => Results.Ok($"Echo: {msg}"));
 
+app.MapGet("/api/preferences", [Authorize] async (Util.Users user) => await Storage.GetPreferencesAsync(user));
+
+app.MapPut("/api/preferences",
+	[Authorize] async (Util.Users user, [FromBody] UserPreferences preferences) =>
+		await Storage.SetPreferencesAsync(user, preferences));
+
 app.MapGet("/api/spotify/authorize", [Authorize] async (Util.Users user, LocalEnvironment env) =>
 {
 	var state = Util.RandomString(14);
@@ -93,11 +101,11 @@ app.MapGet("/api/spotify/authorize", [Authorize] async (Util.Users user, LocalEn
 
 	var scopes = new[]
 	{
-			"user-library-read",
-			"user-library-modify",
-			"user-read-playback-state",
-			"user-modify-playback-state",
-			"user-read-currently-playing"
+		"user-library-read",
+		"user-library-modify",
+		"user-read-playback-state",
+		"user-modify-playback-state",
+		"user-read-currently-playing"
 	};
 
 	var qs = new Dictionary<string, string?>
@@ -274,7 +282,7 @@ app.MapGet("/api/todo/token", [Authorize] async (Util.Users user, IConfiguration
 	var rawToken = await Util.GetToDoTokenAsync(user, config, form);
 	if (rawToken is null)
 	{
-		await Storage.SetTokenAsync(user, Util.Integrations.Spotify, null);
+		await Storage.SetTokenAsync(user, Util.Integrations.ToDo, null);
 		return Results.NotFound();
 	}
 
@@ -283,7 +291,7 @@ app.MapGet("/api/todo/token", [Authorize] async (Util.Users user, IConfiguration
 		rawToken.Refresh ?? token.Refresh,
 		rawToken.Expires
 	);
-	await Storage.SetTokenAsync(user, Util.Integrations.Spotify, token);
+	await Storage.SetTokenAsync(user, Util.Integrations.ToDo, token);
 	return Results.Ok(token.Access);
 });
 

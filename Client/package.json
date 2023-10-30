@@ -9,6 +9,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
+    "@microsoft/microsoft-graph-types": "^2.38.0",
     "@rollup/plugin-commonjs": "^17.0.0",
     "@rollup/plugin-node-resolve": "^11.0.0",
     "@rollup/plugin-typescript": "^8.0.0",
@@ -29,6 +30,7 @@
   },
   "dependencies": {
     "@iconify/svelte": "^3.1.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "bootstrap": "^5.1.3",
     "dayjs": "^1.11.10",
     "ky": "^0.30.0",

@@ -1,6 +1,7 @@
 import { Readable, writable, derived, get, readonly } from "svelte/store";
 import { user } from "./stores/user";
-import { Integrations, Users } from "./util";
+import { Integrations, UserPreferences, Users } from "./util";
+import _ from "lodash";
 
 function getApiKey() {
     const key = localStorage.getItem('api-key');
@@ -21,28 +22,17 @@ function prefixServerUrl(path: string) {
     return server + path;
 }
 
-type ApiOptions = Omit<Parameters<typeof fetch>[1], 'method'> & { 'api-key'?: string };
+type ApiOptions = RequestInit & { method: 'GET' | 'PUT' | 'DELETE', 'api-key'?: string };
 
-async function apiGet(url: string, opts: ApiOptions = {}): Promise<ReturnType<typeof fetch>> {
+async function apiFetch(url: string, opts: ApiOptions = { method: 'GET' }): Promise<ReturnType<typeof fetch>> {
     let fullUrl = prefixServerUrl(url);
-    let composed = { ...opts, ...{ method: 'GET' } };
-    if (composed.headers == null) {
-        composed.headers = {};
+    let local = _.cloneDeep(opts);
+    if (local.headers == null) {
+        local.headers = {};
     }
 
-    composed.headers['X-Api-Key'] = opts["api-key"] ?? getApiKey();
-    return await fetch(fullUrl, composed);
-}
-
-async function apiPost(url: string, opts: ApiOptions = {}): Promise<ReturnType<typeof fetch>> {
-    let fullUrl = prefixServerUrl(url);
-    let composed = { ...opts, ...{ method: 'POST' } };
-    if (composed.headers == null) {
-        composed.headers = {};
-    }
-
-    composed.headers['X-Api-Key'] = opts["api-key"] ?? getApiKey();
-    return await fetch(fullUrl, composed);
+    local.headers['X-Api-Key'] = local["api-key"] ?? getApiKey();
+    return await fetch(fullUrl, local);
 }
 
 const tokenStores = {
@@ -72,7 +62,7 @@ export function configureTokens() {
 }
 
 async function getToken(user: Users, integration: Integrations): Promise<string | null> {
-    let response = await apiGet(`/${integration}/token?user=${user}`);
+    let response = await apiFetch(`/${integration}/token?user=${user}`);
     if (response.status == 404) {
         tokenStores[user][integration].set(null);
         return null;
@@ -91,13 +81,35 @@ async function getToken(user: Users, integration: Integrations): Promise<string 
 
 export const General = {
     async echo(msg: string, apiKey?: string): Promise<boolean> {
-        let response = await apiGet('/echo?msg=' + encodeURI(msg), { 'api-key': apiKey });
+        let response = await apiFetch(`/echo?msg=${encodeURI(msg)}`, { method: 'GET', 'api-key': apiKey });
         if (response.status != 200) {
             console.error('Echo returned an error response', response);
             return false;
         }
 
         return await response.json() == `Echo: ${msg}`;
+    },
+    async loadPreferences(user: Users): Promise<UserPreferences> {
+        let response = await apiFetch(`/preferences?user=${user}`);
+        if (response.status !== 200) {
+            console.error('Failed to load preferences.');
+            return;
+        }
+
+        return (await response.json()) as UserPreferences;
+    },
+    async savePreferences(user: Users, preferences: UserPreferences): Promise<boolean> {
+        let response = await apiFetch(
+            `/preferences?user=${user}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                body: JSON.stringify(preferences)
+            }
+        );
+        return response.status === 200;
     }
 }
 
@@ -116,7 +128,7 @@ function createIntegrationApi(integration: Integrations): IIntegrationApi {
             return readonly(tokenStores[user][integration]);
         },
         async getLoginUrl(user: Users): Promise<string> {
-            let response = await apiGet(`/${integration}/authorize?user=${user}`);
+            let response = await apiFetch(`/${integration}/authorize?user=${user}`);
             if (response.status != 200) {
                 console.error('Could not get authorization URL.', response);
                 throw new Error('Could not get authorization URL.');

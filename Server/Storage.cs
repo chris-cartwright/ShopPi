@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text.Json;
 using Serilog;
 
@@ -45,6 +45,21 @@ public static class Storage
 		await SaveStorageAsync();
 	}
 
+	public static async Task SetPreferencesAsync(Util.Users user, UserPreferences preferences)
+	{
+		await LoadStorageAsync();
+		Debug.Assert(_storage is not null);
+		_storage.Preferences[user] = preferences;
+		await SaveStorageAsync();
+	}
+
+	public static async Task<UserPreferences> GetPreferencesAsync(Util.Users user)
+	{
+		await LoadStorageAsync();
+		Debug.Assert(_storage is not null);
+		return _storage.Preferences[user];
+	}
+
 	public static async Task SetTokenAsync(Util.Users user, Util.Integrations integration, OAuthToken? token)
 	{
 		await LoadStorageAsync();
@@ -88,6 +103,12 @@ public static class Storage
 
 	private static async Task SaveStorageAsync()
 	{
+		if (_storage is null)
+		{
+			Logger.Debug("No current storage.");
+			return;
+		}
+
 		if (File.Exists("storage.json"))
 		{
 			File.Copy("storage.json", "storage.json.last", true);
@@ -112,16 +133,29 @@ public static class Storage
 	private class JsonStorage
 	{
 		public Dictionary<Util.Users, Dictionary<Util.Integrations, OAuthToken?>> Tokens { get; set; } = new();
+		public Dictionary<Util.Users, UserPreferences> Preferences { get; set; } = new();
 		public List<StateInfo> States { get; set; } = new();
 
 		public JsonStorage()
 		{
 			foreach (var user in Enum.GetValues<Util.Users>())
 			{
-				Tokens.TryAdd(user, new());
+				if (!Tokens.ContainsKey(user))
+				{
+					Tokens[user] = new();
+				}
+
+				if (!Preferences.ContainsKey(user))
+				{
+					Preferences[user] = new(new(null));
+				}
+
 				foreach (var integration in Enum.GetValues<Util.Integrations>())
 				{
-					Tokens[user].TryAdd(integration, null);
+					if (!Tokens[user].ContainsKey(integration))
+					{
+						Tokens[user][integration] = null;
+					}
 				}
 			}
 		}

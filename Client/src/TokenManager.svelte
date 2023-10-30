@@ -1,8 +1,8 @@
 <script lang="ts">
     import { user } from "./stores/user";
     import { Apis } from "./api";
-    import Icon from "@iconify/svelte";
     import type { Integrations } from "./util";
+    import ReloadWindowButton from "./ReloadWindowButton.svelte";
 
     export let integration: Integrations;
 
@@ -24,14 +24,7 @@
                 <a href="/" on:click|preventDefault={login}>here</a>
                 to log in.
             </p>
-            <p>
-                <button
-                    class="btn btn-primary"
-                    on:click={() => window.location.reload()}
-                >
-                    <Icon icon="ion:reload" /> Reload
-                </button>
-            </p>
+            <p><ReloadWindowButton /></p>
         </div>
     </div>
 {/if}
