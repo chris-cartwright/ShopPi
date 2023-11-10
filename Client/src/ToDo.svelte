@@ -116,7 +116,7 @@
                 </button>
             </div>
         </div>
-        <div class="row overflow-auto" style="margin-top: 10px; height: 245px">
+        <div class="row overflow-auto" style="margin-top: 10px; height: 185px">
             <ul class="list-group text-start">
                 {#each tasklistTasks as task (task.id)}
                     <li
