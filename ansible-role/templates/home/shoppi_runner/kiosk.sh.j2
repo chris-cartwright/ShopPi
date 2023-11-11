@@ -6,13 +6,4 @@ xset s noblank # don't blank the video device
 matchbox-window-manager -use_titlebar no & # Chromium won't render to the edges of the screen without this
 #unclutter &    # hide X mouse cursor unless mouse activated
 
-rm ~/.config/chromium/Singleton* # Clear out in case of power outage
-chromium-browser \
-    --display=:0 \
-    --window-position=0,0 \
-    --touch-events=enabled \
-    --disable-pinch \
-    --disable-session-crashed-bubble \
-    --disable-features=TranslateUI \
-    --remote-debugging-port=9222 \
-    http://localhost:4000/index.html
+chromium-browser --display=:0 --kiosk --window-position=0,0 --touch-events=enabled --disable-pinch --disable-session-crashed-bubble --disable-features=TranslateUI --remote-debugging-port=9222 http://localhost:4000/index.html
