@@ -40,6 +40,7 @@ steps:
   - cp -r Server/bin/Debug/net6.0/linux-arm/publish/* /drone/src/build
   - mkdir -p /drone/src/build/public
   - cp -r Client/public/* /drone/src/build/public
+  - git config --global --add safe.directory /drone/*
   - git rev-parse HEAD > /drone/src/build/version.hash
   - tar -zcf build.tar.gz -C /drone/src/build .
   - scp build.tar.gz shoppi@"$HOST":~/ShopPi/build.tar.gz
