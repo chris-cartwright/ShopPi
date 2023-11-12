@@ -86,6 +86,8 @@ app.UseAuthorization();
 
 var todoLogger = Log.Logger.ForContext("SourceContext", nameof(Util.Integrations.ToDo));
 
+app.MapGet("/", () => Results.Redirect("index.html"));
+
 app.MapGet("/api/echo", [Authorize] (string msg) => Results.Ok($"Echo: {msg}"));
 
 app.MapGet("/api/preferences", [Authorize] async (Util.Users user) => await Storage.GetPreferencesAsync(user));
