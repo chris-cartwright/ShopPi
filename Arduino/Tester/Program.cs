@@ -1,6 +1,7 @@
-﻿using System.IO.Ports;
+﻿using System.Diagnostics;
+using System.IO.Ports;
 using System.Reflection;
-using System.Threading.Tasks;
+using ShopPi;
 
 namespace Tester;
 
@@ -36,7 +37,7 @@ public class Program : IDisposable
     }
 
     private SerialPort? _port;
-    private CancellationTokenSource _cancel = new();
+    private readonly CancellationTokenSource _cancel = new();
     private bool _pauseReader;
 
     public async Task RunAsync()
@@ -50,8 +51,7 @@ public class Program : IDisposable
             Console.Write("Please select a port: ");
             selectedPort = Console.ReadLine();
             Console.WriteLine();
-        }
-        while (selectedPort == null || ports.All(p => p != selectedPort));
+        } while (selectedPort == null || ports.All(p => p != selectedPort));
 
         _port = new SerialPort(selectedPort, 115200, Parity.None, 8, StopBits.One);
         _port.Open();
@@ -96,7 +96,8 @@ public class Program : IDisposable
     private IReadOnlyDictionary<Commands, CommandInfo> GetCommands()
     {
         var cmds =
-            from method in GetType().GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            from method in GetType()
+                .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             where !method.IsStatic
             let attrs = method.GetCustomAttributes(false).OfType<CommandAttribute>()
             where attrs.Any()
@@ -127,7 +128,7 @@ public class Program : IDisposable
                     byte b = (byte)_port.ReadByte();
                     if (b == (byte)Commands.Ack)
                     {
-                        _port.Write(new byte[] { (byte)Commands.Ack }, 0, 1);
+                        _port.Write(new[] { (byte)Commands.Ack }, 0, 1);
                     }
                     else
                     {
@@ -150,7 +151,9 @@ public class Program : IDisposable
     [Command(Commands.Sync, "Set local time counters to values in RTC.")]
     private async Task GenericCommand(Commands command)
     {
-        _port.Write(new byte[] { (byte)command }, 0, 1);
+        Debug.Assert(_port is not null);
+
+        _port.Write(new[] { (byte)command }, 0, 1);
         Console.WriteLine("Command sent.");
 
         // Small delay in case command has output.
@@ -162,8 +165,10 @@ public class Program : IDisposable
     [Command(Commands.TestInputs)]
     private Task TestInputs(Commands command)
     {
+        Debug.Assert(_port is not null);
+
         Console.Write("Press enter to exit.");
-        _port.Write(new byte[] { (byte)Commands.TestInputs }, 0, 1);
+        _port.Write(new[] { (byte)Commands.TestInputs }, 0, 1);
         Console.ReadLine();
         _port.Write(new byte[] { 0xFF }, 0, 1);
 
@@ -173,9 +178,11 @@ public class Program : IDisposable
     [Command(Commands.SetDatetime)]
     private Task SetDateTime(Commands command)
     {
+        Debug.Assert(_port is not null);
+
         var now = DateTimeOffset.Now;
-        var send = new byte[] {
-            (byte)Commands.SetDatetime,
+        var send = new[]
+        {
             (byte)(now.Year - 2000),
             (byte)now.Month,
             (byte)now.Day,
@@ -183,16 +190,21 @@ public class Program : IDisposable
             (byte)now.Minute,
             (byte)now.Second
         };
+        var crc8 = Crc8.ComputeChecksum(send);
+
+        _port.Write(new[] { (byte)Commands.SetDatetime }, 0, 1);
         _port.Write(send, 0, send.Length);
+        _port.Write(new[] { crc8 }, 0, 1);
 
         Console.WriteLine("Command sent.");
-
         return Task.CompletedTask;
     }
 
     [Command(Commands.ReadLightSensor)]
     private Task ReadLightSensor(Commands command)
     {
+        Debug.Assert(_port is not null);
+
         Console.Write("Press escape to exit.");
         var last = DateTimeOffset.MinValue;
         while (true)
@@ -210,7 +222,7 @@ public class Program : IDisposable
             if (now - last > TimeSpan.FromSeconds(3))
             {
                 last = now;
-                _port.Write(new byte[] { (byte)Commands.ReadLightSensor }, 0, 1);
+                _port.Write(new[] { (byte)Commands.ReadLightSensor }, 0, 1);
             }
         }
 
@@ -220,8 +232,10 @@ public class Program : IDisposable
     [Command(Commands.Ack)]
     private async Task Ack(Commands command)
     {
+        Debug.Assert(_port is not null);
+
         _pauseReader = true;
-        _port.Write(new byte[] { (byte)Commands.Ack }, 0, 1);
+        _port.Write(new[] { (byte)Commands.Ack }, 0, 1);
         try
         {
             var counter = 0;
@@ -265,6 +279,8 @@ public class Program : IDisposable
     [Command(Commands.ListenBinary)]
     private async Task ListenBinary(Commands command)
     {
+        Debug.Assert(_port is not null);
+
         _pauseReader = true;
         try
         {
@@ -292,7 +308,7 @@ public class Program : IDisposable
                     Console.WriteLine();
                 }
 
-                byte b = (byte)_port.ReadByte();
+                var b = (byte)_port.ReadByte();
                 Console.Write(b.ToString("X2"));
 
                 last = DateTimeOffset.Now;

@@ -50,6 +50,9 @@ const byte pin_led_blue = 6;
 const byte port_rpi_power = 0b00000001;
 const byte port_rpi_screen = 0b00000010;
 
+/* Function signatures */
+byte crc8(byte *data, size_t length, byte poly = 0xEB);
+
 /* Variables */
 RTC_DS1307 rtc;
 Clock clock = Clock(rtc);
@@ -129,8 +132,7 @@ void loop() {
     }
 
     outputs &= ~port_rpi_power;
-  }
-  else {
+  } else {
     if (heartbeat.running()) {
       Serial.write(cmd_poweroff);
       heartbeat.suspend();
@@ -152,8 +154,7 @@ void loop() {
     }
 
     outputs |= port_rpi_screen;
-  }
-  else {
+  } else {
     if (!piScreenOn) {
       Serial.write(cmd_screen_on);
       piScreenOn = true;
@@ -193,21 +194,36 @@ void handleCommand() {
 
   if (cmd == cmd_now) {
     sendTime();
-  }
-  else if (cmd ==  cmd_set_datetime) {
-    byte buffer[6];
-    Serial.readBytes(buffer, 6);
+  } else if (cmd == cmd_set_datetime) {
+    byte buffer[7];
+    Serial.readBytes(buffer, sizeof(buffer));
+
+    Serial.println();
+    Serial.print("DEBUG: Received: ");
+    for (int i = 0; i < sizeof(buffer); i++) {
+      Serial.print(buffer[i], DEC);
+      Serial.print(" ");
+    }
 
     Serial.println();
 
+    byte crc = crc8(buffer, sizeof(buffer) - 1);
+    byte check_crc = buffer[sizeof(buffer) - 1];
+    if (crc != check_crc) {
+      Serial.print("CRC8 failed. Expected: ");
+      Serial.print(crc, HEX);
+      Serial.print(", message had: ");
+      Serial.print(check_crc, HEX);
+      return;
+    }
+
     DateTime newTime = DateTime(
-                         buffer[0] + 2000,
-                         buffer[1],
-                         buffer[2],
-                         buffer[3],
-                         buffer[4],
-                         buffer[5]
-                       );
+      buffer[0] + 2000,
+      buffer[1],
+      buffer[2],
+      buffer[3],
+      buffer[4],
+      buffer[5]);
 
     Serial.print("RECV: ");
     char *str = "YYYY-MM-DD hh:mm:ss";
@@ -218,8 +234,7 @@ void handleCommand() {
 
     Serial.print("SET: ");
     sendTime();
-  }
-  else if (cmd == cmd_cycle_led) {
+  } else if (cmd == cmd_cycle_led) {
     Serial.print("TESTING: ");
     Serial.flush();
 
@@ -252,8 +267,7 @@ void handleCommand() {
     Serial.println("off.");
     Serial.flush();
     ledOff();
-  }
-  else if (cmd == cmd_cycle_outputs) {
+  } else if (cmd == cmd_cycle_outputs) {
     outputs = 0;
     setShiftRegisters();
 
@@ -284,8 +298,7 @@ void handleCommand() {
     Serial.println("off.");
     outputs = 0xFF;
     setShiftRegisters();
-  }
-  else if (cmd == cmd_test_inputs) {
+  } else if (cmd == cmd_test_inputs) {
     Serial.print("INPUTS: ");
 
     byte prev = 0;
@@ -306,30 +319,23 @@ void handleCommand() {
     }
 
     Serial.println("done.");
-  }
-  else if (cmd == cmd_read_light_sensor) {
+  } else if (cmd == cmd_read_light_sensor) {
     Serial.print("LIGHT: ");
     Serial.println(analogRead(pin_light_sensor), DEC);
-  }
-  else if (cmd == cmd_verbose_enable) {
+  } else if (cmd == cmd_verbose_enable) {
     verbose = true;
     Serial.println("Verbose enabled.");
-  }
-  else if (cmd == cmd_verbose_disable) {
+  } else if (cmd == cmd_verbose_disable) {
     verbose = false;
     Serial.println("Verbose disabled.");
-  }
-  else if (cmd == cmd_boot_rpi) {
+  } else if (cmd == cmd_boot_rpi) {
     bootRpi();
     Serial.println("Boot triggered.");
-  }
-  else if (cmd == cmd_sync) {
+  } else if (cmd == cmd_sync) {
     clock.sync();
-  }
-  else if (cmd == cmd_ack) {
+  } else if (cmd == cmd_ack) {
     Serial.write(cmd_ack);
-  }
-  else {
+  } else {
     Serial.print("ERROR: Unknown command ");
     Serial.println(cmd, HEX);
   }
@@ -339,10 +345,10 @@ byte readButtons() {
   static unsigned long lastRead = 0;
   static byte prevState = 0;
 
-  if(millis() - lastRead < debounce) {
+  if (millis() - lastRead < debounce) {
     return prevState;
   }
-  
+
   byte ret = 0;
   for (int i = 0; i < 8; i++) {
     inputs = 1 << i;
@@ -449,4 +455,22 @@ void bootRpi() {
   digitalWrite(pin_wake_rpi, LOW);
   delay(100);
   digitalWrite(pin_wake_rpi, HIGH);
+}
+
+byte crc8(byte *data, size_t length, byte poly = 0xEB) {
+  byte crc = 0;
+  for (byte i = 0; i < length; i++) {
+    byte b = data[i];
+    crc ^= b;
+    for (byte i = 8; i > 0; i--) {
+      if ((crc & (1 << 7)) > 0) {
+        crc <<= 1;
+        crc ^= poly;
+      } else {
+        crc <<= 1;
+      }
+    }
+  }
+
+  return crc;
 }

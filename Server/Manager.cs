@@ -71,7 +71,6 @@ namespace ShopPi
 			{
 				var now = DateTimeOffset.Now;
 				var send = new[] {
-					(byte)Commands.SetDatetime,
 					(byte)(now.Year - 2000),
 					(byte)now.Month,
 					(byte)now.Day,
@@ -79,7 +78,11 @@ namespace ShopPi
 					(byte)now.Minute,
 					(byte)now.Second
 				};
+				var crc8 = Crc8.ComputeChecksum(send);
+
+				_port.Write(new[] { (byte)Commands.SetDatetime }, 0, 1);
 				_port.Write(send, 0, send.Length);
+				_port.Write(new[] { crc8 }, 0, 1);
 
 				// Chew up newline added for clarity in interactive mode
 				_ = _port.ReadUntil('\n');

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopPi", "Server\ShopPi.csproj", "{CFACFA19-13FB-404C-A3F5-98AEDF7E1C17}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tester", "Arduino\Tester\Tester.csproj", "{63D3EEC2-0475-4FA7-BBF2-8CFAAED4A3EB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{CFACFA19-13FB-404C-A3F5-98AEDF7E1C17}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CFACFA19-13FB-404C-A3F5-98AEDF7E1C17}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CFACFA19-13FB-404C-A3F5-98AEDF7E1C17}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63D3EEC2-0475-4FA7-BBF2-8CFAAED4A3EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63D3EEC2-0475-4FA7-BBF2-8CFAAED4A3EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63D3EEC2-0475-4FA7-BBF2-8CFAAED4A3EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63D3EEC2-0475-4FA7-BBF2-8CFAAED4A3EB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
