@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using System.IO.Ports;
 using System.Reflection;
 using ShopPi;
@@ -18,6 +19,13 @@ public enum Commands : byte
     BootPi,
     Sync,
     Ack,
+    PowerOff,
+    ScreenOn,
+    ScreenOff,
+    SetSchedule,
+    GetSchedule,
+
+    // Does not exist on Arduino. Shortcut for this program. Keep last.
     ListenBinary
 }
 
@@ -149,6 +157,9 @@ public class Program : IDisposable
     [Command(Commands.VerboseDisable)]
     [Command(Commands.BootPi)]
     [Command(Commands.Sync, "Set local time counters to values in RTC.")]
+    [Command(Commands.PowerOff)]
+    [Command(Commands.ScreenOff)]
+    [Command(Commands.ScreenOn)]
     private async Task GenericCommand(Commands command)
     {
         Debug.Assert(_port is not null);
@@ -258,7 +269,7 @@ public class Program : IDisposable
             }
             else if (b == 'E')
             {
-                // Begginging of an error message.
+                // Beginning of an error message.
                 Console.Write("E");
 
                 // Wait for it to finish.
@@ -274,6 +285,58 @@ public class Program : IDisposable
         {
             _pauseReader = false;
         }
+    }
+
+    [Command(Commands.SetSchedule)]
+    private Task SetSchedule(Commands command)
+    {
+        Debug.Assert(_port is not null);
+
+        Console.Write("Enter hour (0-23): ");
+        var strHour = Console.ReadLine();
+        if (!int.TryParse(strHour, out var hour) || hour is < 0 or > 23)
+        {
+            Console.WriteLine("Invalid hour. Must be 0-23.");
+            return Task.CompletedTask;
+        }
+        
+        Console.Write("Enter minute (0-59, will be rounded down to nearest 10): ");
+        var strMinute = Console.ReadLine();
+        if (!int.TryParse(strMinute, out var minute) || minute is < 0 or > 59)
+        {
+            Console.WriteLine("Invalid minute. Must be 0-59.");
+            return Task.CompletedTask;
+        }
+
+        minute /= 10;
+        
+        var schedule = (byte)(((hour << 3) & 0b11111000) | (minute & 0b00000111));
+        _port.Write(new[] { (byte)command, schedule }, 0, 2);
+        return Task.CompletedTask;
+    }
+    
+    [Command(Commands.GetSchedule)]
+    private Task GetSchedule(Commands command)
+    {
+        Debug.Assert(_port is not null);
+
+        int schedule;
+        _pauseReader = true;
+        try
+        {
+            _port.Write(new[] { (byte)command }, 0, 1);
+            schedule = _port.ReadByte();
+        }
+        finally
+        {
+            _pauseReader = false;
+        }
+
+        var hours = ((schedule & 0b11111000) >> 3);
+        var minutes = (schedule & 0b00000111) * 10;
+        Console.WriteLine($"Schedule: {hours:00}:{minutes:00}.");
+        
+        return Task.CompletedTask;
     }
 
     [Command(Commands.ListenBinary)]

@@ -4,6 +4,7 @@
 
 #include "Clock.h"
 #include "Heartbeat.h"
+#include "Nightly.h"
 
 //#define DEBUG
 
@@ -12,6 +13,8 @@
 // The type of this constant just needs to be big enough to hold it's value.
 // No effect on the math.
 const uint8_t debounce = 50;
+
+const uint16_t eeprom_nightly = 0;
 
 /* Commands */
 const byte cmd_now = 0x01;
@@ -28,6 +31,8 @@ const byte cmd_ack = 0x0B;
 const byte cmd_poweroff = 0x0C;
 const byte cmd_screen_on = 0x0D;
 const byte cmd_screen_off = 0x0E;
+const byte cmd_set_sched = 0x0F;
+const byte cmd_get_sched = 0x10;
 
 /* Pins */
 const byte pin_light_sensor = A0;
@@ -52,11 +57,13 @@ const byte port_rpi_screen = 0b00000010;
 
 /* Function signatures */
 byte crc8(byte *data, size_t length, byte poly = 0xEB);
+//void bootPi();
 
 /* Variables */
 RTC_DS1307 rtc;
 Clock clock = Clock(rtc);
 Heartbeat heartbeat;
+Nightly nightly(eeprom_nightly, rtc, &bootRpi);
 
 byte inputs = 0;
 byte outputs = 0;
@@ -119,6 +126,8 @@ void loop() {
     notif_blue = 0;
     setNotifLed();
   }
+
+  nightly.tick();
 
   byte buttons = readButtons();
 
@@ -229,6 +238,11 @@ void handleCommand() {
     char *str = "YYYY-MM-DD hh:mm:ss";
     Serial.println(newTime.toString(str));
 
+    if(!newTime.isValid()) {
+      Serial.println("ERROR: Provided date/time is invalid. Update ignored.");
+      return;
+    }
+
     rtc.adjust(newTime);
     clock.sync();
 
@@ -335,6 +349,12 @@ void handleCommand() {
     clock.sync();
   } else if (cmd == cmd_ack) {
     Serial.write(cmd_ack);
+  } else if(cmd == cmd_set_sched) {
+    uint8_t sched = Serial.read();
+    Serial.print("SET: ");
+    Serial.println(nightly.schedule(sched) ? "true" : "false");
+  } else if(cmd == cmd_get_sched) {
+    Serial.println(nightly.schedule());
   } else {
     Serial.print("ERROR: Unknown command ");
     Serial.println(cmd, HEX);
