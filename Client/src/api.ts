@@ -52,12 +52,17 @@ async function checkTokens() {
     tokenStores[u][Integrations.ToDo].set(await getToken(u, Integrations.ToDo));
 }
 
+let checkTokenInterval: NodeJS.Timer | null = null;
 export function configureTokens() {
+    if(checkTokenInterval != null) {
+        return;
+    }
+    
     // `configureTokens` should not be blocking, but we also want to wait for
     // one token check before starting the loop.
     (async () => {
         await checkTokens();
-        setInterval(() => checkTokens(), 5_000);
+        checkTokenInterval = setInterval(() => checkTokens(), 5_000);
     })();
 }
 
