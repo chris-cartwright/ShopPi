@@ -26,6 +26,7 @@ steps:
       - backend
       - frontend
     commands:
+      - apt-get update && apt-get install -y --no-install-recommends git
       - mkdir -p /drone/src/build
       - cp -r Server/bin/Debug/net6.0/linux-arm/publish/* /drone/src/build
       - mkdir -p /drone/src/build/public
@@ -59,7 +60,7 @@ steps:
         from_secret: shoppi.d_host_key
       HOST: shoppi.d.chris-cartwright.com
     commands:
-      - apt-get update && apt-get install -y --no-install-recommends openssh-client ca-certificates git
+      - apt-get update && apt-get install -y --no-install-recommends openssh-client ca-certificates
       - eval $(ssh-agent -s)
       - mkdir ~/.ssh && chmod 700 ~/.ssh
       - echo "$DRONE_SSH_PRIVATE" | ssh-add -
