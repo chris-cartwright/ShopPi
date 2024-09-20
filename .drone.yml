@@ -34,21 +34,7 @@ steps:
       - git config --global --add safe.directory /drone/*
       - git rev-parse HEAD > /drone/src/build/version.hash
       - tar -zcf build.tar.gz -C /drone/src/build .
-
----
-
-kind: pipeline
-type: docker
-name: deploy
-
-trigger:
-  event:
-    - cron
-
-depends_on:
-  - build
-
-steps:
+      
   - name: verify
     image: debian:11
     environment:
