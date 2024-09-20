@@ -50,7 +50,7 @@ steps:
       - echo "$DRONE_SSH_PRIVATE" | ssh-add -
       - echo "$SHOPPI_HOST_KEY" >> ~/.ssh/known_hosts
 
-      - ssh shoppi@"$HOST" "cat ShopPi/version.hash" | ! diff /drone/src/build/version.hash -
+      - ! ssh shoppi@"$HOST" "cat ShopPi/version.hash" | diff /drone/src/build/version.hash -
   
   - name: deploy
     image: debian:11
