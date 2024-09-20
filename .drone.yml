@@ -42,7 +42,7 @@ steps:
         from_secret: shoppi.d_host_key
       HOST: shoppi.d.chris-cartwright.com
     commands:
-      - apt-get update && apt-get install -y --no-install-recommends openssh-client ca-certificates
+      - apt-get update && apt-get install -y --no-install-recommends openssh-client ca-certificates tree
       - eval $(ssh-agent -s)
       - mkdir ~/.ssh && chmod 700 ~/.ssh
       - echo "$DRONE_SSH_PRIVATE" | ssh-add -
