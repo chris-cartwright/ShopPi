@@ -2,10 +2,6 @@ kind: pipeline
 type: docker
 name: build
 
-trigger:
-  branch:
-    - master
-
 steps:
   - name: backend
     image: mcr.microsoft.com/dotnet/sdk:6.0
@@ -34,7 +30,7 @@ steps:
       - git config --global --add safe.directory /drone/*
       - git rev-parse HEAD > /drone/src/build/version.hash
       - tar -zcf build.tar.gz -C /drone/src/build .
-      
+
   - name: verify
     image: debian:11
     environment:
@@ -52,6 +48,9 @@ steps:
       - echo "$DRONE_SSH_PRIVATE" | ssh-add -
       - echo "$SHOPPI_HOST_KEY" >> ~/.ssh/known_hosts
 
+      - tree -L 2 /drone/src/build
+      - pwd
+      - tree -L 2 .
       - ssh shoppi@"$HOST" "cat ShopPi/version.hash" | diff /drone/src/build/version.hash -
   
   - name: deploy
