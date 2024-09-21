@@ -56,9 +56,15 @@ steps:
     image: debian:11
     depends_on:
       - verify
+    environment:
+      HOST: shoppi.d.chris-cartwright.com
     commands:
       - apt-get update && apt-get install -y --no-install-recommends openssh-client
-      - tar -zcf build.tar.gz -C /drone/src/build .
+      - eval $(ssh-agent -s)
+      - mkdir ~/.ssh && chmod 700 ~/.ssh
+      - echo "$DRONE_SSH_PRIVATE" | ssh-add -
+      - echo "$SHOPPI_HOST_KEY" >> ~/.ssh/known_hosts
+
       - scp build.tar.gz shoppi@"$HOST":~/ShopPi/build.tar.gz
       # The `if` is intentional: an error from `stop.sh` should still kill the build.
       # We do not want to error out if the script does not exist.
