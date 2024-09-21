@@ -44,7 +44,7 @@ steps:
         from_secret: shoppi.d_host_key
       HOST: shoppi.d.chris-cartwright.com
     commands:
-      - apt-get update && apt-get install -y --no-install-recommends openssh-client ca-certificates tree
+      - apt-get update && apt-get install -y --no-install-recommends openssh-client
       - eval $(ssh-agent -s)
       - mkdir ~/.ssh && chmod 700 ~/.ssh
       - echo "$DRONE_SSH_PRIVATE" | ssh-add -
@@ -57,6 +57,7 @@ steps:
     depends_on:
       - verify
     commands:
+      - apt-get update && apt-get install -y --no-install-recommends openssh-client
       - tar -zcf build.tar.gz -C /drone/src/build .
       - scp build.tar.gz shoppi@"$HOST":~/ShopPi/build.tar.gz
       # The `if` is intentional: an error from `stop.sh` should still kill the build.
