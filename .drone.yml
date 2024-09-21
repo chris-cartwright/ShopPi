@@ -1,10 +1,6 @@
 kind: pipeline
 type: docker
-name: build
-
-trigger:
-  branch:
-    - master
+name: default
 
 steps:
   - name: backend
@@ -34,9 +30,11 @@ steps:
       - git config --global --add safe.directory /drone/*
       - git rev-parse HEAD > /drone/src/build/version.hash
       - tar -zcf build.tar.gz -C /drone/src/build .
-      
+
   - name: verify
     image: debian:11
+    depends_on:
+      - pack
     environment:
       # ssh-keygen -t rsa
       DRONE_SSH_PRIVATE:
@@ -46,18 +44,33 @@ steps:
         from_secret: shoppi.d_host_key
       HOST: shoppi.d.chris-cartwright.com
     commands:
-      - apt-get update && apt-get install -y --no-install-recommends openssh-client ca-certificates
+      - apt-get update && apt-get install -y --no-install-recommends openssh-client
       - eval $(ssh-agent -s)
       - mkdir ~/.ssh && chmod 700 ~/.ssh
       - echo "$DRONE_SSH_PRIVATE" | ssh-add -
       - echo "$SHOPPI_HOST_KEY" >> ~/.ssh/known_hosts
 
-      - ssh shoppi@"$HOST" "cat ShopPi/version.hash" | diff /drone/src/build/version.hash -
+      - "! ssh shoppi@\"$HOST\" \"cat ShopPi/version.hash\" | diff /drone/src/build/version.hash -"
   
   - name: deploy
     image: debian:11
+    depends_on:
+      - verify
+    environment:
+      # ssh-keygen -t rsa
+      DRONE_SSH_PRIVATE:
+        from_secret: drone_ssh_private
+      # ssh-keyscan -t rsa shoppi.d.chris-cartwright.com
+      SHOPPI_HOST_KEY:
+        from_secret: shoppi.d_host_key
+      HOST: shoppi.d.chris-cartwright.com
     commands:
-      - tar -zcf build.tar.gz -C /drone/src/build .
+      - apt-get update && apt-get install -y --no-install-recommends openssh-client
+      - eval $(ssh-agent -s)
+      - mkdir ~/.ssh && chmod 700 ~/.ssh
+      - echo "$DRONE_SSH_PRIVATE" | ssh-add -
+      - echo "$SHOPPI_HOST_KEY" >> ~/.ssh/known_hosts
+
       - scp build.tar.gz shoppi@"$HOST":~/ShopPi/build.tar.gz
       # The `if` is intentional: an error from `stop.sh` should still kill the build.
       # We do not want to error out if the script does not exist.
