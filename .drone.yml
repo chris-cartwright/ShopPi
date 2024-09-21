@@ -57,6 +57,12 @@ steps:
     depends_on:
       - verify
     environment:
+      # ssh-keygen -t rsa
+      DRONE_SSH_PRIVATE:
+        from_secret: drone_ssh_private
+      # ssh-keyscan -t rsa shoppi.d.chris-cartwright.com
+      SHOPPI_HOST_KEY:
+        from_secret: shoppi.d_host_key
       HOST: shoppi.d.chris-cartwright.com
     commands:
       - apt-get update && apt-get install -y --no-install-recommends openssh-client
