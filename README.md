@@ -25,6 +25,17 @@ Requires installing `drone-cli`.
 drone exec --secret-file=.secrets.env
 ```
 
+## Automatic
+
+A nightly schedule can be set using command 0x0F. If set, the Ardunio will boot the Raspberry Pi at
+the specified time. Any hour is supported; minutes are rounded down to the nearest 10.
+
+The cron schedule within Drone uses UTC while the Ardunio uses local time. Set cron to run at 0615
+local. The Arduino's schedule has been set to 0600. That leaves 15mins for the Pi to boot and settle.
+```sh
+drone cron add --branch master christopher/ShopPi nightly "0 15 11 * * *"
+```
+
 # Debugging Chromium
 
 Open tunnel from RPi: `ssh -i ~/.ssh/chris-cartwright -L 9222:localhost:9222 pi@shoppi.d.chris-cartwright.com`

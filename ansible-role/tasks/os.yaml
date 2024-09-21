@@ -104,3 +104,11 @@
     option: enable_uart
     value: 1
     no_extra_spaces: true
+
+- name: Update and power off
+  ansible.builtin.cron:
+    name: "Update and power off"
+    minute: "30"
+    hour: "6"
+    user: root
+    job: "apt-get update ; apt-get upgrade -y"

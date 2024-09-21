@@ -334,7 +334,7 @@ public class Program : IDisposable
 
         var hours = ((schedule & 0b11111000) >> 3);
         var minutes = (schedule & 0b00000111) * 10;
-        Console.WriteLine($"Schedule: {hours:00}:{minutes:00}.");
+        Console.WriteLine($"Schedule: {hours:00}{minutes:00}.");
         
         return Task.CompletedTask;
     }
